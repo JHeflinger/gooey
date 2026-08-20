@@ -911,6 +911,33 @@ void UIFloatingDropdown_(PersistantUIData* data, size_t width, Vector2 origin, s
     g_dropdownmenu_data = (DropdownMenuData) { data, items, num_items, TRUE, width, param, func, origin };
 }
 
+BOOL UIDropdownSection_(PersistantUIData* data, const char* label, size_t width, DrawSectionFunction func) {
+    if (CheckCollisionPointRec(
+            GetMousePosition(),
+            (Rectangle){g_ui_cursor.x + g_ui_position.x, g_ui_cursor.y + g_ui_position.y + 2, width, LINE_HEIGHT - 4})) {
+        DrawRectangle(
+            g_ui_cursor.x, g_ui_cursor.y + 2, width, LINE_HEIGHT - 4,
+            InputButtonDown(IK_MOUSELEFT) ? MappedColor(PANEL_BTN_PRS_COLOR) : MappedColor(PANEL_BTN_HVR_COLOR));
+        if (InputButtonPressed(IK_MOUSELEFT)) data->arbitrary_bool = !data->arbitrary_bool;
+    }
+    if (data->arbitrary_bool) {
+        DrawTriangle(
+            (Vector2){ UIGetCursor().x + 10.0f + (10.0f / 2.0f), UIGetCursor().y + 10.0f - (10.0f / 2.0f) },
+            (Vector2){ UIGetCursor().x + 10.0f - (10.0f / 2.0f), UIGetCursor().y + 10.0f - (10.0f / 2.0f) },
+            (Vector2){ UIGetCursor().x + 10.0f, UIGetCursor().y + 10.0f + (10.0f / 2.0f) },
+            MappedColor(UI_TEXT_COLOR));
+    } else {
+        DrawTriangle(
+            (Vector2){ UIGetCursor().x + 10.0f - (10.0f / 2.0f), UIGetCursor().y + 10.0f - (10.0f / 2.0f) },
+            (Vector2){ UIGetCursor().x + 10.0f - (10.0f / 2.0f), UIGetCursor().y + 10.0f + (10.0f / 2.0f) },
+            (Vector2){ UIGetCursor().x + 10.0f + (10.0f / 2.0f), UIGetCursor().y + 10.0f },
+            MappedColor(UI_TEXT_COLOR));
+    }
+    g_ui_cursor.x += 20;
+    UIDrawText(label);
+    if (data->arbitrary_bool) func(width);
+}
+
 void DisableUI() {
     g_ui_disabled = TRUE;
 }
