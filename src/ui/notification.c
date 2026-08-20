@@ -15,8 +15,8 @@ static const float g_section_height = 40.0f;
 static const float g_notification_read_speed = 3.0f;
 
 void DrawNotifications() {
-    BOOL flipnotifications = ConfigGetBool("flipnotifications");
-    BOOL enablenotifications = ConfigGetBool("enablenotifications");
+    BOOL flipnotifications = !ConfigHas("flipnotifications") || ConfigGetBool("flipnotifications");
+    BOOL enablenotifications = !ConfigHas("enablenotifications") || ConfigGetBool("enablenotifications");
 	float true_y = GetScreenHeight() - (g_section_height * g_notifications.size);
 	if (true_y < -g_section_height) g_pulse_end_timer = (g_notification_read_speed + SWIPE_TIME);
     g_anchor_y += (true_y - g_anchor_y) / 2.0f;
@@ -93,7 +93,8 @@ void CleanNotifications() {
 }
 
 void Notify(MessageLevel level, char* message, ...) {
-    if (!ConfigGetBool("enablenotifications") || level < ConfigGetMessageLevel("notificationfilter")) return;
+    if (!(!ConfigHas("enablenotifications") || ConfigGetBool("enablenotifications")) || 
+        level < ConfigHas("notificationfilter") ? ConfigGetMessageLevel("notificationfilter") : LEVEL_NONE) return;
     va_list args;
     va_start(args, message);
 	char _b[MAX_NOTIFICATION_SIZE] = { 0 };
