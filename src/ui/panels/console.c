@@ -24,6 +24,7 @@ static size_t DropdownSelectLogFilter(void* data, size_t index, BOOL cancel) {
     if (index != (size_t)-1) {
         ConfigSetMessageLevel("logfilter", (MessageLevel)index);
     } else {
+        if (!ConfigHas("logfilter")) return LEVEL_NONE;
         return (size_t)ConfigGetMessageLevel("logfilter");
     }
     return index;
@@ -92,10 +93,10 @@ static float CalculateLogHeight(float width) {
 
 static BOOL DrawLog(float* cursory, float width, size_t* index) {
     if (g_outputbuffer[*index][0] == '\0') return FALSE;
-    MessageLevel logfilter = ConfigGetMessageLevel("logfilter");
+    MessageLevel logfilter = !ConfigHas("logfilter") || ConfigGetMessageLevel("logfilter");
     if (logfilter != LEVEL_NONE) {
         BOOL yes = logfilter == g_loglevels[*index];
-        if (ConfigGetBool("limitlogs") && g_loglevels[*index] > logfilter) yes = TRUE;
+        if ((!ConfigHas("limitlogs") || ConfigGetBool("limitlogs")) && g_loglevels[*index] > logfilter) yes = TRUE;
         if (!yes) {
             *index = (*index + 1) % CONSOLE_HISTORY;
             if (*index == g_history_pointer || g_outputbuffer[*index][0] == '\0') return FALSE;
@@ -208,7 +209,7 @@ static void DrawConsolePanel(float width, float height) {
     DrawRectangle(0, 0, width, 30, MappedColor(PANEL_BG_COLOR));
     DrawRectangle(width - 5, 0, 5, height, MappedColor(PANEL_BG_COLOR));
     UISetCursor(width - UITextWidth("Limit:") - 30, 5);
-    BOOL limitlogsref = ConfigGetBool("limitlogs");
+    BOOL limitlogsref = !ConfigHas("limitlogs") || ConfigGetBool("limitlogs");
     UICheckboxLabeled("Limit:", &limitlogsref);
     ConfigSetBool("limitlogs", limitlogsref);
     UISetCursor(5, 5);
@@ -221,7 +222,7 @@ static void DrawConsolePanel(float width, float height) {
     UISetCursor(10, height - 75);
     UIDivider(width - 20);
     if (UITextInput("cmd >>", g_commandbuffer, sizeof(g_commandbuffer), width - 20, TRUE)) {
-        if (ConfigGetBool("echologs")) {
+        if (!ConfigHas("echologs") || ConfigGetBool("echologs")) {
             SubmitConsoleOutput(LEVEL_TRACE, ">> %s", g_commandbuffer);
         }
         ExecuteCommand(g_commandbuffer);
@@ -264,7 +265,7 @@ void SubmitConsoleOutput(MessageLevel level, const char* output, ...) {
         g_outputbuffer[g_history_pointer][MAX_OUTPUT_SIZE - 7] = '(';
     }
     g_loglevels[g_history_pointer] = level;
-    if (ConfigGetBool("printlogs")) {
+    if (!ConfigHas("printlogs") || ConfigGetBool("printlogs")) {
         switch (level) {
             case LEVEL_TRACE:
                 EZ_TRACE(fmtbuffer);
@@ -281,7 +282,7 @@ void SubmitConsoleOutput(MessageLevel level, const char* output, ...) {
             default: break;
         }
     }
-    if (ConfigGetBool("logsnotify")) {
+    if (!ConfigHas("logsnotify") || ConfigGetBool("logsnotify")) {
         int spaceptr = 0;
         for (;g_outputbuffer[g_history_pointer][spaceptr] != ' '; spaceptr++) {}
         Notify(level, g_outputbuffer[g_history_pointer] + spaceptr + 1);
