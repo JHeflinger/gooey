@@ -1,6 +1,10 @@
 #include "graph.h"
 #include "data/colors.h"
 
+#ifdef PRISM
+#include "renderer/renderer.h"
+#endif
+
 #define GRAPH_FIDELITY 1.0f
 #define DEFAULT_GRAPH_HEIGHT 30.0f
 #define HISTORY_SIZE 300
@@ -36,6 +40,15 @@ static float FrameTimeMilli() {
     return 1000.0f * GetFrameTime();
 }
 
+#ifdef PRISM
+static float GPUMemory100Mb() {
+    size_t numheaps = GPUHeapCount();
+    size_t allocated = 0;
+    for (size_t i = 0; i < numheaps; i++) allocated += GPUHeapUsage(i);
+    return (float)allocated / 100000000.0f;
+}
+#endif
+
 static void AddHistory(const char* name, Color color, DataFunc updater) {
     ARRLIST_DataHistory_add(&g_histories, (DataHistory) {
         name, { 0 }, DEFAULT_GRAPH_HEIGHT, 0.0f, 0, 0, HISTORY_SIZE - 1, color, updater, TRUE
@@ -45,6 +58,10 @@ static void AddHistory(const char* name, Color color, DataFunc updater) {
 static void InitializeGraphPanel() {
     AddHistory("Application time (ms)", BLUE, FrameTimeMilli);
     AddHistory("CPU Memory (MB)", YELLOW, CPUMemoryMB);
+    #ifdef PRISM
+        AddHistory("Render time (ms)", RED, RenderTime);
+        AddHistory("GPU Memory (100 MB)", GREEN, GPUMemory100Mb);
+    #endif
 }
 
 static void UpdateGraphPanel(float width, float height) {
