@@ -22,6 +22,7 @@ typedef void (*SelectFunction)(size_t index);
 typedef void (*PanelFunction)(float width, float height);
 typedef int (*PopupFunction)(size_t, size_t, size_t, size_t);
 typedef size_t (*DropdownSelectFunction)(void* data, size_t index, BOOL cancel);
+typedef void (*DrawSectionFunction)(size_t);
 
 typedef struct {
     char name[MAX_NAME_LEN];
@@ -176,6 +177,10 @@ BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_
 void UIFloatingDropdown_(PersistantUIData* data, size_t width, Vector2 origin, size_t num_items, char** items, DropdownSelectFunction func, void* param);
 #define UIFloatingDropdown(width, origin, num_items, items, func, param) \
     PERSISTANT_UI(UIFloatingDropdown_, width, origin, num_items, items, func, param)
+
+BOOL UIDropdownSection_(PersistantUIData* data, const char* label, size_t width, DrawSectionFunction func);
+#define UIDropdownSection(label, width, func) \
+    PERSISTANT_UI(UIDropdownSection_, label, width, func)
 
 void DisableUI();
 
