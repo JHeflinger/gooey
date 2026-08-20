@@ -94,7 +94,7 @@ void CleanNotifications() {
 
 void Notify(MessageLevel level, char* message, ...) {
     if (!(!ConfigHas("enablenotifications") || ConfigGetBool("enablenotifications")) || 
-        level < ConfigHas("notificationfilter") ? ConfigGetMessageLevel("notificationfilter") : LEVEL_NONE) return;
+        level < (ConfigHas("notificationfilter") ? ConfigGetMessageLevel("notificationfilter") : LEVEL_NONE)) return;
     va_list args;
     va_start(args, message);
 	char _b[MAX_NOTIFICATION_SIZE] = { 0 };
