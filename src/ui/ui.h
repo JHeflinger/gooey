@@ -31,6 +31,9 @@ typedef struct {
     PanelFunction update;
     CleanFunction clean;
 	BOOL flush;
+    BOOL scrollable;
+    float autoheight;
+    float autoscroll;
 } Panel;
 DECLARE_ARRLIST(Panel);
 

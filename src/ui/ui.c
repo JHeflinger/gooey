@@ -357,7 +357,21 @@ static void PreRenderUI_helper(UI* ui, BOOL full) {
         BeginTextureMode(ui->panels.data[ui->selected].texture);
         g_current_ui_target = ui->panels.data[ui->selected].texture;
         ClearBackground((Color){0, 0, 0, 0});
-        ui->panels.data[ui->selected].draw(full ? (size_t)GetScreenWidth() : ui->w, full ? (size_t)GetScreenHeight() : ui->h);
+        float uih = full ? (size_t)GetScreenHeight() : ui->h;
+        if (ui->panels.data[ui->selected].scrollable && ui->panels.data[ui->selected].autoheight != 0.0f) {
+            if (HoveredPanel() && strcmp(HoveredPanel(), ui->panels.data[ui->selected].name) == 0) {
+                if (InputKeyPressed(IK_ENTER)) ui->panels.data[ui->selected].autoscroll = 0.0f;
+                ui->panels.data[ui->selected].autoscroll -= 18.0f * GetMouseWheelMove();
+            }
+            if (ui->panels.data[ui->selected].autoscroll > ui->panels.data[ui->selected].autoheight - uih + 50)
+                ui->panels.data[ui->selected].autoscroll = ui->panels.data[ui->selected].autoheight - uih + 50;
+            if (ui->panels.data[ui->selected].autoscroll < 0)
+                ui->panels.data[ui->selected].autoscroll = 0.0f;
+            UIMoveCursor(0, 0 - ui->panels.data[ui->selected].autoscroll);
+        }
+        ui->panels.data[ui->selected].autoheight = g_ui_cursor.y;
+        ui->panels.data[ui->selected].draw(full ? (size_t)GetScreenWidth() : ui->w, uih);
+        ui->panels.data[ui->selected].autoheight = g_ui_cursor.y - ui->panels.data[ui->selected].autoheight;
         EndTextureMode();
     }
 }
