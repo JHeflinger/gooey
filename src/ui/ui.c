@@ -912,13 +912,17 @@ void UIFloatingDropdown_(PersistantUIData* data, size_t width, Vector2 origin, s
 }
 
 BOOL UIDropdownSection_(PersistantUIData* data, const char* label, size_t width, DrawSectionFunction func) {
+    BOOL changed = FALSE;
     if (CheckCollisionPointRec(
             GetMousePosition(),
             (Rectangle){g_ui_cursor.x + g_ui_position.x, g_ui_cursor.y + g_ui_position.y + 2, width, LINE_HEIGHT - 4})) {
         DrawRectangle(
             g_ui_cursor.x, g_ui_cursor.y + 2, width, LINE_HEIGHT - 4,
             InputButtonDown(IK_MOUSELEFT) ? MappedColor(PANEL_BTN_PRS_COLOR) : MappedColor(PANEL_BTN_HVR_COLOR));
-        if (InputButtonPressed(IK_MOUSELEFT)) data->arbitrary_bool = !data->arbitrary_bool;
+        if (InputButtonPressed(IK_MOUSELEFT)) {
+            data->arbitrary_bool = !data->arbitrary_bool;
+            changed = TRUE;
+        }
     }
     if (data->arbitrary_bool) {
         DrawTriangle(
@@ -936,6 +940,7 @@ BOOL UIDropdownSection_(PersistantUIData* data, const char* label, size_t width,
     g_ui_cursor.x += 20;
     UIDrawText(label);
     if (data->arbitrary_bool) func(width);
+    return changed;
 }
 
 void DisableUI() {
