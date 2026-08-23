@@ -925,7 +925,7 @@ void UIFloatingDropdown_(PersistantUIData* data, size_t width, Vector2 origin, s
     g_dropdownmenu_data = (DropdownMenuData) { data, items, num_items, TRUE, width, param, func, origin };
 }
 
-BOOL UIDropdownSection_(PersistantUIData* data, const char* label, size_t width, DrawSectionFunction func) {
+BOOL UIDropdownSection_(PersistantUIData* data, const char* label, size_t width, DrawSectionFunction func, void* param) {
     BOOL changed = FALSE;
     if (CheckCollisionPointRec(
             GetMousePosition(),
@@ -953,7 +953,7 @@ BOOL UIDropdownSection_(PersistantUIData* data, const char* label, size_t width,
     }
     g_ui_cursor.x += 20;
     UIDrawText(label);
-    if (data->arbitrary_bool) func(width);
+    if (data->arbitrary_bool) func(width, param);
     return changed;
 }
 
