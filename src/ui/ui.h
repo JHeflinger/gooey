@@ -135,9 +135,9 @@ Vector2 UIGetPosition();
 
 Vector2 UIGetSize();
 
-void UICheckbox(BOOL* value);
+BOOL UICheckbox(BOOL* value);
 
-void UICheckboxLabeled(const char* label, BOOL* value);
+BOOL UICheckboxLabeled(const char* label, BOOL* value);
 
 BOOL UIDragUInt_(PersistantUIData* data, uint32_t* value, uint32_t min, uint32_t max, uint32_t speed, size_t w);
 #define UIDragUInt(value, min, max, speed, w) \

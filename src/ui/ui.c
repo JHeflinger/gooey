@@ -576,13 +576,15 @@ Vector2 UIGetSize() {
     return g_ui_size;
 }
 
-void UICheckbox(BOOL* value) {
+BOOL UICheckbox(BOOL* value) {
+    BOOL changed = FALSE;
     if (InputButtonPressed(IK_MOUSELEFT) &&
         CheckCollisionPointRec(
             GetMousePosition(),
             (Rectangle){g_ui_cursor.x + g_ui_position.x + 2, g_ui_cursor.y + g_ui_position.y + 2, LINE_HEIGHT - 4, LINE_HEIGHT - 4})) {
         *value = !(*value);
         g_was_ui_element_just_used = TRUE;
+        changed = TRUE;
     }
 	DrawRectangle(g_ui_cursor.x + 2, g_ui_cursor.y + 2, LINE_HEIGHT - 4, LINE_HEIGHT - 4, MappedColor(UI_CHECKBOX_COLOR));
 	if (*value) {
@@ -593,15 +595,16 @@ void UICheckbox(BOOL* value) {
 	}
     g_ui_cursor.y += LINE_HEIGHT;
     g_ui_cursor.x = 10;
+    return changed;
 }
 
-void UICheckboxLabeled(const char* label, BOOL* value) {
+BOOL UICheckboxLabeled(const char* label, BOOL* value) {
     float prex = g_ui_cursor.x;
     UIDrawText(label);
     UISetCursor(prex, g_ui_cursor.y);
     float xdif = MeasureTextEx(FontAsset(), label, LINE_HEIGHT, 0).x;
     UIMoveCursor(xdif + 5, -LINE_HEIGHT);
-	UICheckbox(value);
+	return UICheckbox(value);
 }
 
 BOOL UIDragUInt_(PersistantUIData* data, uint32_t* value, uint32_t min, uint32_t max, uint32_t speed, size_t w) {
