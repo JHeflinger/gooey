@@ -1,53 +1,59 @@
 #include "extra.h"
+#include "data/input.h"
+#include <raymath.h>
 
-BOOL UIDoublet(const char* precursors, UIMultiType type, void* first, void* second, void* min, void* max, void* speed, void* reset, size_t w) {
+BOOL UIDoublet(const char* precursors, UIMultiType type, void* first, void* second, UIMultiValue min, UIMultiValue max, UIMultiValue speed, UIMultiValue reset, size_t w) {
     
     return FALSE;
 }
 
-BOOL UITriplet(const char* precursors, UIMultiType type, void* first, void* second, void* third, void* min, void* max, void* speed, void* reset, size_t w) {
+BOOL UITriplet(const char* precursors, UIMultiType type, void* first, void* second, void* third, UIMultiValue min, UIMultiValue max, UIMultiValue speed, UIMultiValue reset, size_t w) {
     BOOL edited = FALSE;
     char buf[2] = { 0 };
+    size_t csize = type == UI_FLOATS ? sizeof(float) : sizeof(size_t);
     float component_width = (w - 20 - (3 * 16) - (2 * 10)) / 3.0f;
     UIMoveCursor(5, 5);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, RED);
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
-        tc->translation.x = 0.0f;
+        memcpy(first, &reset, csize);
     }
     buf[0] = precursors[0];
     UIDrawText(buf);
     UIMoveCursor(17, -20);
-    edited |= UIDragFloat(&(tc->translation.x), -FLT_MAX, FLT_MAX, 0.1f, component_width);
+    if (type == UI_FLOATS) edited |= UIDragFloat((float*)first, min._float, max._float, speed._float, component_width);
+    else edited |= UIDragSize((size_t*)first, min._size, max._size, speed._size, component_width);
     UIMoveCursor(component_width + 31, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, GREEN);
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
-        tc->translation.y = 0.0f;
+        memcpy(second, &reset, csize);
     }
     buf[0] = precursors[1];
     UIDrawText(buf);
     UIMoveCursor(component_width + 42, -20);
-    edited |= UIDragFloat(&(tc->translation.y), -FLT_MAX, FLT_MAX, 0.1f, component_width);
+    if (type == UI_FLOATS) edited |= UIDragFloat((float*)second, min._float, max._float, speed._float, component_width);
+    else edited |= UIDragSize((size_t*)second, min._size, max._size, speed._size, component_width);
     UIMoveCursor((2*component_width) + 56, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, BLUE);
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
-        tc->translation.z = 0.0f;
+        memcpy(third, &reset, csize);
     }
     buf[0] = precursors[2];
     UIDrawText(buf);
     UIMoveCursor((2*component_width) + 67, -20);
-    edited |= UIDragFloat(&(tc->translation.z), -FLT_MAX, FLT_MAX, 0.1f, component_width);
+    if (type == UI_FLOATS) edited |= UIDragFloat((float*)third, min._float, max._float, speed._float, component_width);
+    else edited |= UIDragSize((size_t*)third, min._size, max._size, speed._size, component_width);
     return edited;
 }
 
-BOOL UIColoredDoublet(const Color* colors, const char* precursors, UIMultiType type, void* first, void* second, void* min, void* max, void* speed, void* reset, size_t w) {
+BOOL UIColoredDoublet(const Color* colors, const char* precursors, UIMultiType type, void* first, void* second, UIMultiValue min, UIMultiValue max, UIMultiValue speed, UIMultiValue reset, size_t w) {
 
     return FALSE;
 }
 
-BOOL UIColoredTriplet(const Color* colors, const char* precursors, UIMultiType type, void* first, void* second, void* third, void* min, void* max, void* speed, void* reset, size_t w) {
+BOOL UIColoredTriplet(const Color* colors, const char* precursors, UIMultiType type, void* first, void* second, void* third, UIMultiValue min, UIMultiValue max, UIMultiValue speed, UIMultiValue reset, size_t w) {
 
     return FALSE;
 }
