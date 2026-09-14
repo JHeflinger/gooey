@@ -9,12 +9,12 @@ typedef enum {
     UI_INTS
 } UIMultiType;
 
-BOOL UIDoublet(const char* precursors, UIMultiType type, void* first, void* second);
+BOOL UIDoublet(const char* precursors, UIMultiType type, void* first, void* second, void* min, void* max, void* speed, void* reset, size_t w);
 
-BOOL UITriplet(const char* precursors, UIMultiType type, void* first, void* second);
+BOOL UITriplet(const char* precursors, UIMultiType type, void* first, void* second, void* third, void* min, void* max, void* speed, void* reset, size_t w);
 
-BOOL UIColoredDoublet(const Color* colors, const char* precursors, UIMultiType type, void* first, void* second);
+BOOL UIColoredDoublet(const Color* colors, const char* precursors, UIMultiType type, void* first, void* second, void* min, void* max, void* speed, void* reset, size_t w);
 
-BOOL UIColoredTriplet(const Color* colors, const char* precursors, UIMultiType type, void* first, void* second);
+BOOL UIColoredTriplet(const Color* colors, const char* precursors, UIMultiType type, void* first, void* second, void* third, void* min, void* max, void* speed, void* reset, size_t w);
 
 #endif
