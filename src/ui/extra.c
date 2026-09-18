@@ -1,5 +1,6 @@
 #include "extra.h"
 #include "data/input.h"
+#include "data/colors.h"
 #include <raymath.h>
 
 BOOL UIDoublet_(PersistantUIData* d1, PersistantUIData* d2, const char* precursors, UIMultiType type, void* first, void* second, UIMultiValue min, UIMultiValue max, UIMultiValue speed, UIMultiValue reset, size_t w) {
@@ -142,4 +143,10 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     if (type == UI_FLOATS) edited |= UIDragFloat_(d3, (float*)third, min._float, max._float, speed._float, component_width);
     else edited |= UIDragSize_(d3, (size_t*)third, min._size, max._size, speed._size, component_width);
     return edited;
+}
+
+void UIColumnHeader(const char* text, size_t w) {
+    UIDrawText(text);
+    UIMoveCursor(w, -LINE_HEIGHT);
+    DrawRectangle(UIGetCursor().x - 10, UIGetCursor().y, 2, 20, MappedColor(UI_SUBTLE_TEXT_COLOR));
 }

@@ -42,4 +42,6 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
 #define UIColoredTriplet(colors, precursors, type, first, second, third, min, max, speed, reset, w) \
     PERSISTENT_TRIPLE_UI(UIColoredTriplet_, colors, precursors, type, first, second, third, min, max, speed, reset, w)
 
+void UIColumnHeader(const char* text, size_t w);
+
 #endif

@@ -1078,6 +1078,15 @@ void UIDivider(size_t w) {
     g_ui_cursor.x = 10;
 }
 
+void UIDividerLabeled(size_t w, const char* label) {
+    float tratio = 2.0f * UITextWidth(label)  / (w - 20.0f);
+    float thresh = (w - 20.0f) * (1.0f - tratio);
+    DrawRectangleGradientH(UIGetCursor().x + thresh, UIGetCursor().y + (LINE_HEIGHT/2.0f) - 1, w - 20.0f - thresh, 2, MappedColor(UI_DIVIDER_COLOR), (Color){ 0, 0, 0, 0 });
+    UIDivider(thresh);
+    UIMoveCursor(w - UITextWidth(label) - 30, -20);
+    UIDrawItalicText(label);
+}
+
 void UIDropList_(PersistantUIData* data, const char* label, size_t width, size_t num_items, char** items, SelectFunction func) {
     float clickwidth = UITextWidth(label) + 25;
     clickwidth = clickwidth < width ? width : clickwidth;
