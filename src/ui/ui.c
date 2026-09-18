@@ -273,7 +273,7 @@ static void DrawDropdownMenu() {
 }
 
 static inline BOOL IsAlphaNumeric(int c) {
-    return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
+    return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == ' ';
 }
 
 static void HandleTextInput() {
@@ -609,7 +609,7 @@ BOOL UIDragFloat_(PersistantUIData* data, float* value, float min, float max, fl
         }
     } else {
         char buffer[32] = { 0 };
-        snprintf(buffer, 32, "%.3f", *value);
+        snprintf(buffer, 32, "%.2f", *value);
         Vector2 text_size = MeasureTextEx(FontAsset(), buffer, LINE_HEIGHT, 0);
         DrawTextEx(FontAsset(), buffer, (Vector2){ g_ui_cursor.x + (w/2) - (text_size.x/2), g_ui_cursor.y }, LINE_HEIGHT, 0,
             g_ui_disabled ? MappedColor(UI_TEXT_DISABLED) : MappedColor(UI_TEXT_COLOR));
