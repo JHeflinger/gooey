@@ -6,7 +6,7 @@
 BOOL UIDoublet_(PersistantUIData* d1, PersistantUIData* d2, const char* precursors, UIMultiType type, void* first, void* second, UIMultiValue min, UIMultiValue max, UIMultiValue speed, UIMultiValue reset, size_t w) {
     BOOL edited = FALSE;
     char buf[2] = { 0 };
-    size_t csize = type == UI_FLOATS ? sizeof(float) : sizeof(size_t);
+    size_t csize = type == UI_FLOATS ? sizeof(float) : (type == UI_SIZES ? sizeof(size_t) : sizeof(int32_t));
     float component_width = (w - 20 - (2 * 16) - (1 * 10)) / 2.0f;
     float start = UIGetCursor().x - 10;
     UIMoveCursor(5, 0);
@@ -19,6 +19,7 @@ BOOL UIDoublet_(PersistantUIData* d1, PersistantUIData* d2, const char* precurso
     UIDrawText(buf);
     UIMoveCursor(start + 17, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d1, (float*)first, min._float, max._float, speed._float, component_width);
+    else if (type == UI_INTS) edited |= UIDragInt_(d1, (int*)first, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d1, (size_t*)first, min._size, max._size, speed._size, component_width);
     UIMoveCursor(start + component_width + 31, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, GREEN);
@@ -30,6 +31,7 @@ BOOL UIDoublet_(PersistantUIData* d1, PersistantUIData* d2, const char* precurso
     UIDrawText(buf);
     UIMoveCursor(start + component_width + 42, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d2, (float*)second, min._float, max._float, speed._float, component_width);
+    else if (type == UI_INTS) edited |= UIDragInt_(d2, (int*)second, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d2, (size_t*)second, min._size, max._size, speed._size, component_width);
     return edited;
 }
@@ -37,7 +39,7 @@ BOOL UIDoublet_(PersistantUIData* d1, PersistantUIData* d2, const char* precurso
 BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3, const char* precursors, UIMultiType type, void* first, void* second, void* third, UIMultiValue min, UIMultiValue max, UIMultiValue speed, UIMultiValue reset, size_t w) {
     BOOL edited = FALSE;
     char buf[2] = { 0 };
-    size_t csize = type == UI_FLOATS ? sizeof(float) : sizeof(size_t);
+    size_t csize = type == UI_FLOATS ? sizeof(float) : (type == UI_SIZES ? sizeof(size_t) : sizeof(int32_t));
     float component_width = (w - 20 - (3 * 16) - (2 * 10)) / 3.0f;
     float start = UIGetCursor().x - 10;
     UIMoveCursor(5, 0);
@@ -50,6 +52,7 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
     UIDrawText(buf);
     UIMoveCursor(start + 17, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d1, (float*)first, min._float, max._float, speed._float, component_width);
+    else if (type == UI_INTS) edited |= UIDragInt_(d1, (int*)first, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d1, (size_t*)first, min._size, max._size, speed._size, component_width);
     UIMoveCursor(start + component_width + 31, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, GREEN);
@@ -61,6 +64,7 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
     UIDrawText(buf);
     UIMoveCursor(start + component_width + 42, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d2, (float*)second, min._float, max._float, speed._float, component_width);
+    else if (type == UI_INTS) edited |= UIDragInt_(d2, (int*)second, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d2, (size_t*)second, min._size, max._size, speed._size, component_width);
     UIMoveCursor(start + (2*component_width) + 56, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, BLUE);
@@ -72,6 +76,7 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
     UIDrawText(buf);
     UIMoveCursor(start + (2*component_width) + 67, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d3, (float*)third, min._float, max._float, speed._float, component_width);
+    else if (type == UI_INTS) edited |= UIDragInt_(d3, (int*)third, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d3, (size_t*)third, min._size, max._size, speed._size, component_width);
     return edited;
 }
@@ -79,7 +84,7 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
 BOOL UIColoredDoublet_(PersistantUIData* d1, PersistantUIData* d2, const Color* colors, const char* precursors, UIMultiType type, void* first, void* second, UIMultiValue min, UIMultiValue max, UIMultiValue speed, UIMultiValue reset, size_t w) {
     BOOL edited = FALSE;
     char buf[2] = { 0 };
-    size_t csize = type == UI_FLOATS ? sizeof(float) : sizeof(size_t);
+    size_t csize = type == UI_FLOATS ? sizeof(float) : (type == UI_SIZES ? sizeof(size_t) : sizeof(int32_t));
     float component_width = (w - 20 - (2 * 16) - (1 * 10)) / 2.0f;
     float start = UIGetCursor().x - 10;
     UIMoveCursor(5, 0);
@@ -92,6 +97,7 @@ BOOL UIColoredDoublet_(PersistantUIData* d1, PersistantUIData* d2, const Color* 
     UIDrawText(buf);
     UIMoveCursor(start + 17, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d1, (float*)first, min._float, max._float, speed._float, component_width);
+    else if (type == UI_INTS) edited |= UIDragInt_(d1, (int*)first, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d1, (size_t*)first, min._size, max._size, speed._size, component_width);
     UIMoveCursor(start + component_width + 31, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, colors[1]);
@@ -103,6 +109,7 @@ BOOL UIColoredDoublet_(PersistantUIData* d1, PersistantUIData* d2, const Color* 
     UIDrawText(buf);
     UIMoveCursor(start + component_width + 42, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d2, (float*)second, min._float, max._float, speed._float, component_width);
+    else if (type == UI_INTS) edited |= UIDragInt_(d2, (int*)second, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d2, (size_t*)second, min._size, max._size, speed._size, component_width);
     return edited;
 }
@@ -110,7 +117,7 @@ BOOL UIColoredDoublet_(PersistantUIData* d1, PersistantUIData* d2, const Color* 
 BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3, const Color* colors, const char* precursors, UIMultiType type, void* first, void* second, void* third, UIMultiValue min, UIMultiValue max, UIMultiValue speed, UIMultiValue reset, size_t w) {
     BOOL edited = FALSE;
     char buf[2] = { 0 };
-    size_t csize = type == UI_FLOATS ? sizeof(float) : sizeof(size_t);
+    size_t csize = type == UI_FLOATS ? sizeof(float) : (type == UI_SIZES ? sizeof(size_t) : sizeof(int32_t));
     float component_width = (w - 20 - (3 * 16) - (2 * 10)) / 3.0f;
     float start = UIGetCursor().x - 10;
     UIMoveCursor(5, 0);
@@ -123,6 +130,7 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     UIDrawText(buf);
     UIMoveCursor(start + 17, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d1, (float*)first, min._float, max._float, speed._float, component_width);
+    else if (type == UI_INTS) edited |= UIDragInt_(d1, (int*)first, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d1, (size_t*)first, min._size, max._size, speed._size, component_width);
     UIMoveCursor(start + component_width + 31, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, colors[1]);
@@ -134,6 +142,7 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     UIDrawText(buf);
     UIMoveCursor(start + component_width + 42, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d2, (float*)second, min._float, max._float, speed._float, component_width);
+    else if (type == UI_INTS) edited |= UIDragInt_(d2, (int*)second, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d2, (size_t*)second, min._size, max._size, speed._size, component_width);
     UIMoveCursor(start + (2*component_width) + 56, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, colors[2]);
@@ -145,6 +154,7 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     UIDrawText(buf);
     UIMoveCursor(start + (2*component_width) + 67, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d3, (float*)third, min._float, max._float, speed._float, component_width);
+    else if (type == UI_INTS) edited |= UIDragInt_(d3, (int*)third, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d3, (size_t*)third, min._size, max._size, speed._size, component_width);
     return edited;
 }

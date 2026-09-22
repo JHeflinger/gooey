@@ -5,12 +5,14 @@
 
 typedef enum {
     UI_FLOATS,
+    UI_INTS,
     UI_SIZES,
 } UIMultiType;
 
 typedef union {
     float _float;
     size_t _size;
+    int32_t _int;
 } UIMultiValue;
 
 #define PERSISTENT_TRIPLE_UI(func, ...) \
