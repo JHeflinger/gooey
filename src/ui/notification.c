@@ -21,7 +21,7 @@ void DrawNotifications() {
 	if (true_y < -g_section_height) g_pulse_end_timer = (g_notification_read_speed + SWIPE_TIME);
     g_anchor_y += (true_y - g_anchor_y) / 2.0f;
     if (g_notifications.size > 0) {
-        g_pulse_end_timer += GetFrameTime();
+        if (GetFrameTime() < 1.0f) g_pulse_end_timer += GetFrameTime(); // skip long pauses as they could clear the notifications unwantedly, such as during app pauses
         for (size_t i = 0; i < g_notifications.size; i++) {
             int rx = flipnotifications ? GetScreenWidth() - UITextWidth(g_notifications.data[i].message) - 40 : 10;
             int ry = g_anchor_y + (g_section_height * i);
