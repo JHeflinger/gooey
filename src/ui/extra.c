@@ -14,6 +14,7 @@ BOOL UIDoublet_(PersistantUIData* d1, PersistantUIData* d2, const char* precurso
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
         memcpy(first, &reset, csize);
+        edited = TRUE;
     }
     buf[0] = precursors[0];
     UIDrawText(buf);
@@ -26,6 +27,7 @@ BOOL UIDoublet_(PersistantUIData* d1, PersistantUIData* d2, const char* precurso
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
         memcpy(second, &reset, csize);
+        edited = TRUE;
     }
     buf[0] = precursors[1];
     UIDrawText(buf);
@@ -47,6 +49,7 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
         memcpy(first, &reset, csize);
+        edited = TRUE;
     }
     buf[0] = precursors[0];
     UIDrawText(buf);
@@ -59,6 +62,7 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
         memcpy(second, &reset, csize);
+        edited = TRUE;
     }
     buf[0] = precursors[1];
     UIDrawText(buf);
@@ -71,6 +75,7 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
         memcpy(third, &reset, csize);
+        edited = TRUE;
     }
     buf[0] = precursors[2];
     UIDrawText(buf);
@@ -92,6 +97,7 @@ BOOL UIColoredDoublet_(PersistantUIData* d1, PersistantUIData* d2, const Color* 
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
         memcpy(first, &reset, csize);
+        edited = TRUE;
     }
     buf[0] = precursors[0];
     UIDrawText(buf);
@@ -104,6 +110,7 @@ BOOL UIColoredDoublet_(PersistantUIData* d1, PersistantUIData* d2, const Color* 
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
         memcpy(second, &reset, csize);
+        edited = TRUE;
     }
     buf[0] = precursors[1];
     UIDrawText(buf);
@@ -125,6 +132,7 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
         memcpy(first, &reset, csize);
+        edited = TRUE;
     }
     buf[0] = precursors[0];
     UIDrawText(buf);
@@ -137,6 +145,7 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
         memcpy(second, &reset, csize);
+        edited = TRUE;
     }
     buf[0] = precursors[1];
     UIDrawText(buf);
@@ -149,6 +158,7 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
         memcpy(third, &reset, csize);
+        edited = TRUE;
     }
     buf[0] = precursors[2];
     UIDrawText(buf);
