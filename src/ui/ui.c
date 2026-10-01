@@ -1183,6 +1183,12 @@ BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_
     }
     if (box_width < 0) return retval;
     g_ui_cursor.x += text_size.x + labeloffset;
+    if (g_scratch_target_in_use &&
+        (g_ui_scratch_target.texture.width  != GetScreenWidth() ||
+         g_ui_scratch_target.texture.height != GetScreenHeight())) {
+        UnloadRenderTexture(g_ui_scratch_target);
+        g_scratch_target_in_use = FALSE;
+    }
     if (!g_scratch_target_in_use) {
         g_ui_scratch_target = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
         g_scratch_target_in_use = TRUE;
@@ -1209,7 +1215,7 @@ BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_
     if (size == 0) DisableUI();
     DrawTexturePro(
         g_ui_scratch_target.texture,
-        (Rectangle){ 0, g_current_ui_target.texture.height - LINE_HEIGHT + 2, box_width, -(LINE_HEIGHT - 2) },
+        (Rectangle){ 0, g_ui_scratch_target.texture.height - LINE_HEIGHT + 2, box_width, -(LINE_HEIGHT - 2) },
         (Rectangle){ g_ui_cursor.x, g_ui_cursor.y, box_width, LINE_HEIGHT - 2 },
         (Vector2){ 0, 0 },
         0.0f,
