@@ -1402,5 +1402,6 @@ void RefreshUI(UI** ui, ARRLIST_Panel panelbank) {
         size_t i = 0;
         LoadUIConfigHelper(ui, &i, panelbank);
         SetPrimaryUI(*ui);
+        ResizeUI(*ui);
     }
 }
