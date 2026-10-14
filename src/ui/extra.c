@@ -42,7 +42,7 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
     BOOL edited = FALSE;
     char buf[2] = { 0 };
     size_t csize = type == UI_FLOATS ? sizeof(float) : (type == UI_SIZES ? sizeof(size_t) : sizeof(int32_t));
-    float component_width = (w - 20 - (3 * 16) - (2 * 10)) / 3.0f;
+    float component_width = (w - 20 - (3 * 16)) / 3.0f;
     float start = UIGetCursor().x - 10;
     UIMoveCursor(5, 0);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, RED);
@@ -57,7 +57,7 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
     if (type == UI_FLOATS) edited |= UIDragFloat_(d1, (float*)first, min._float, max._float, speed._float, component_width);
     else if (type == UI_INTS) edited |= UIDragInt_(d1, (int*)first, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d1, (size_t*)first, min._size, max._size, speed._size, component_width);
-    UIMoveCursor(start + component_width + 31, -20);
+    UIMoveCursor(start + component_width + 20, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, GREEN);
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
@@ -66,11 +66,11 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
     }
     buf[0] = precursors[1];
     UIDrawText(buf);
-    UIMoveCursor(start + component_width + 42, -20);
+    UIMoveCursor(start + component_width + 34, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d2, (float*)second, min._float, max._float, speed._float, component_width);
     else if (type == UI_INTS) edited |= UIDragInt_(d2, (int*)second, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d2, (size_t*)second, min._size, max._size, speed._size, component_width);
-    UIMoveCursor(start + (2*component_width) + 56, -20);
+    UIMoveCursor(start + (2*component_width) + 38, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, BLUE);
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
@@ -79,7 +79,7 @@ BOOL UITriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUIData* d3
     }
     buf[0] = precursors[2];
     UIDrawText(buf);
-    UIMoveCursor(start + (2*component_width) + 67, -20);
+    UIMoveCursor(start + (2*component_width) + 51, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d3, (float*)third, min._float, max._float, speed._float, component_width);
     else if (type == UI_INTS) edited |= UIDragInt_(d3, (int*)third, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d3, (size_t*)third, min._size, max._size, speed._size, component_width);
@@ -125,7 +125,7 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     BOOL edited = FALSE;
     char buf[2] = { 0 };
     size_t csize = type == UI_FLOATS ? sizeof(float) : (type == UI_SIZES ? sizeof(size_t) : sizeof(int32_t));
-    float component_width = (w - 20 - (3 * 16) - (2 * 10)) / 3.0f;
+    float component_width = (w - 20 - (3 * 16)) / 3.0f;
     float start = UIGetCursor().x - 10;
     UIMoveCursor(5, 0);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, colors[0]);
@@ -140,7 +140,7 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     if (type == UI_FLOATS) edited |= UIDragFloat_(d1, (float*)first, min._float, max._float, speed._float, component_width);
     else if (type == UI_INTS) edited |= UIDragInt_(d1, (int*)first, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d1, (size_t*)first, min._size, max._size, speed._size, component_width);
-    UIMoveCursor(start + component_width + 31, -20);
+    UIMoveCursor(start + component_width + 20, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, colors[1]);
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
@@ -149,11 +149,11 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     }
     buf[0] = precursors[1];
     UIDrawText(buf);
-    UIMoveCursor(start + component_width + 42, -20);
+    UIMoveCursor(start + component_width + 34, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d2, (float*)second, min._float, max._float, speed._float, component_width);
     else if (type == UI_INTS) edited |= UIDragInt_(d2, (int*)second, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d2, (size_t*)second, min._size, max._size, speed._size, component_width);
-    UIMoveCursor(start + (2*component_width) + 56, -20);
+    UIMoveCursor(start + (2*component_width) + 38, -20);
     DrawRectangle(UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18, colors[2]);
     if (CheckCollisionPointRec(Vector2Subtract(GetMousePosition(), UIGetPosition()), (Rectangle){UIGetCursor().x - 5, UIGetCursor().y + 1, 20, 18}) &&
         InputButtonPressed(IK_MOUSELEFT)) {
@@ -162,7 +162,7 @@ BOOL UIColoredTriplet_(PersistantUIData* d1, PersistantUIData* d2, PersistantUID
     }
     buf[0] = precursors[2];
     UIDrawText(buf);
-    UIMoveCursor(start + (2*component_width) + 67, -20);
+    UIMoveCursor(start + (2*component_width) + 51, -20);
     if (type == UI_FLOATS) edited |= UIDragFloat_(d3, (float*)third, min._float, max._float, speed._float, component_width);
     else if (type == UI_INTS) edited |= UIDragInt_(d3, (int*)third, min._int, max._int, speed._int, component_width);
     else edited |= UIDragSize_(d3, (size_t*)third, min._size, max._size, speed._size, component_width);
