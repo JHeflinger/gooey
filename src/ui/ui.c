@@ -272,8 +272,8 @@ static void DrawDropdownMenu() {
     } else if (InputButtonReleased(IK_MOUSELEFT)) g_dropdownmenu_data.active = 2;
 }
 
-static inline BOOL IsAlphaNumeric(int c) {
-    return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == ' ';
+static inline BOOL IsTextable(int c) {
+    return c >= 32 && c <= 126;
 }
 
 static void HandleTextInput() {
@@ -290,7 +290,7 @@ static void HandleTextInput() {
             case TIM_INT: allowed = (c >= '0' && c <= '9') || c == '-'; break;
             case TIM_UINT: allowed = (c >= '0' && c <= '9'); break;
             case TIM_ALPHANUMERIC:
-            default: allowed = IsAlphaNumeric(c); break;
+            default: allowed = IsTextable(c); break;
         }
         if (!allowed) continue;
         if (g_textinput_data.cursor >= g_textinput_data.size - 1) continue;
