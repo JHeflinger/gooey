@@ -5,6 +5,8 @@
 #include <raylib.h>
 
 #define BLACKBOARD_STRING_SIZE 64
+#define CONFGET(type, key, fallback) (ConfigHas(key) ? ConfigGet##type(key) : fallback)
+#define CONFSET(type, key, value) ConfigSet##type(key, value)
 
 typedef enum {
     BB_INT,
