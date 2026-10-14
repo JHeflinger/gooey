@@ -1087,7 +1087,7 @@ void UIDividerLabeled(size_t w, const char* label) {
     UIDrawItalicText(label);
 }
 
-void UIDropList_(PersistantUIData* data, const char* label, size_t width, size_t num_items, char** items, SelectFunction func) {
+void UIDropList_(PersistantUIData* data, const char* label, size_t width, size_t num_items, char** items, SelectFunction func, size_t selected) {
     float clickwidth = UITextWidth(label) + 25;
     clickwidth = clickwidth < width ? width : clickwidth;
     if (CheckCollisionPointRec(
@@ -1127,6 +1127,9 @@ void UIDropList_(PersistantUIData* data, const char* label, size_t width, size_t
                     func(i);
                     g_was_ui_element_just_used = TRUE;
                 }
+            }
+            if (selected == i) {
+                DrawRectangle(g_ui_cursor.x, g_ui_cursor.y + 2, clickwidth - 30, LINE_HEIGHT - 4, MappedColor(PANEL_BTN_HVR_COLOR));
             }
             UIDrawText(items[i]);
         }

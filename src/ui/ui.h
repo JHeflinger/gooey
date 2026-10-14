@@ -175,9 +175,9 @@ void UIDivider(size_t w);
 
 void UIDividerLabeled(size_t w, const char* label);
 
-void UIDropList_(PersistantUIData* data, const char* label, size_t width, size_t num_items, char** items, SelectFunction func);
-#define UIDropList(label, width, num_items, items, func) \
-    PERSISTANT_UI(UIDropList_, label, width, num_items, items, func)
+void UIDropList_(PersistantUIData* data, const char* label, size_t width, size_t num_items, char** items, SelectFunction func, size_t selected);
+#define UIDropList(label, width, num_items, items, func, selected) \
+    PERSISTANT_UI(UIDropList_, label, width, num_items, items, func, selected)
 
 void UIDropdownMenu_(PersistantUIData* data, size_t width, size_t num_items, char** items, DropdownSelectFunction func, void* param);
 #define UIDropdownMenu(width, num_items, items, func, param) \
