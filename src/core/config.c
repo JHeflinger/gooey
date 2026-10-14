@@ -90,12 +90,28 @@ BlackBoardValue ConfigGet(const char* key) {
 
 int ConfigGetInt(const char* key) {
     BlackBoardValue val = ConfigGet(key);
+    if (val.type == BB_SIZE) {
+        EZ_WARN("Blackboard value was requested to be an int but was instead a size");
+        return (int)val.value._size;
+    }
+    if (val.type == BB_FLOAT) {
+        EZ_WARN("Blackboard value was requested to be an int but was instead a float");
+        return (int)val.value._float;
+    }
     EZ_ASSERT(val.type == BB_INT, "BlackBoard value was requested to be an int but was not of that type");
     return val.value._int;
 }
 
 float ConfigGetFloat(const char* key) {
     BlackBoardValue val = ConfigGet(key);
+    if (val.type == BB_INT) {
+        EZ_WARN("Blackboard value was requested to be a float but was instead an int");
+        return val.value._int;
+    }
+    if (val.type == BB_SIZE) {
+        EZ_WARN("Blackboard value was requested to be an float but was instead a size");
+        return val.value._size;
+    }
     EZ_ASSERT(val.type == BB_FLOAT, "BlackBoard value was requested to be a float but was not of that type");
     return val.value._float;
 }
@@ -120,6 +136,14 @@ Camera2D ConfigGetCamera(const char* key) {
 
 size_t ConfigGetSize(const char* key) {
     BlackBoardValue val = ConfigGet(key);
+    if (val.type == BB_INT) {
+        EZ_WARN("Blackboard value was requested to be a size but was instead an int");
+        return (size_t)val.value._int;
+    }
+    if (val.type == BB_FLOAT) {
+        EZ_WARN("Blackboard value was requested to be a size but was instead a float");
+        return (size_t)val.value._float;
+    }
     EZ_ASSERT(val.type == BB_SIZE, "BlackBoard value was requested to be a size_t but was not of that type");
     return val.value._size;
 }
