@@ -139,6 +139,16 @@ const char* ConfigGetString(const char* key) {
     return HASHMAP_BlackBoard_get(&(g_config.blackboard), bk).value._string;
 }
 
+const char* ConfigGetString(const char* key) {
+    EZ_ASSERT(strlen(key) < BLACKBOARD_STRING_SIZE, "Key is too large for blackboard");
+    BlackBoardKey bk = { 0 };
+    strcpy(bk.str, key);
+    BlackBoardValue* val = HASHMAP_BlackBoard_ref(&g_config.blackboard, bk);
+    EZ_ASSERT(val != NULL, "BlackBoard key does not exist");
+    EZ_ASSERT(val->type == BB_STRING, "BlackBoard value was requested to be a string but was not of that type");
+    return val->value._string;
+}
+
 void InitConfig() {
     FILE *file = fopen(".gooeyconf", "rb");
     if (file) {
