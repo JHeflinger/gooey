@@ -131,15 +131,6 @@ MessageLevel ConfigGetMessageLevel(const char* key) {
 }
 
 const char* ConfigGetString(const char* key) {
-    BlackBoardValue val = ConfigGet(key);
-    EZ_ASSERT(val.type == BB_STRING, "BlackBoard value was requested to be a string but was not of that type");
-    EZ_ASSERT(strlen(key) < BLACKBOARD_STRING_SIZE, "Key is too large for blackboard");
-    BlackBoardKey bk = { 0 };
-    strcpy(bk.str, key);
-    return HASHMAP_BlackBoard_get(&(g_config.blackboard), bk).value._string;
-}
-
-const char* ConfigGetString(const char* key) {
     EZ_ASSERT(strlen(key) < BLACKBOARD_STRING_SIZE, "Key is too large for blackboard");
     BlackBoardKey bk = { 0 };
     strcpy(bk.str, key);
