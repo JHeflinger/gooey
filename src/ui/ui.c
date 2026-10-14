@@ -8,6 +8,8 @@
 #include <easylogger.h>
 #include <string.h>
 
+#define UI_AA_SCALE 2
+
 IMPL_ARRLIST(Panel);
 IMPL_ARRLIST(UIConfig);
 
@@ -66,6 +68,42 @@ static char g_dragtext_buf[32] = { 0 };
 static PersistantUIData* g_dragtext_owner = NULL;
 static PersistantUIData* g_last_click_owner = NULL;
 static double g_last_click_time = 0.0;
+static RenderTexture2D g_ui_composite_target = { 0 };
+static BOOL g_ui_mode2d_active = FALSE;
+
+static void BeginUITextureMode(RenderTexture2D target) {
+    BeginTextureMode(target);
+    Camera2D camera = { 0 };
+    camera.zoom = (float)UI_AA_SCALE;
+    BeginMode2D(camera);
+    g_ui_mode2d_active = TRUE;
+}
+
+static void EndUITextureMode() {
+    if (g_ui_mode2d_active) {
+        EndMode2D();
+        g_ui_mode2d_active = FALSE;
+    }
+    EndTextureMode();
+}
+
+static BOOL EnsureUIAAResources() {
+    int width = GetScreenWidth();
+    int height = GetScreenHeight();
+    if (width <= 0 || height <= 0) return FALSE;
+    int target_width = width * UI_AA_SCALE;
+    int target_height = height * UI_AA_SCALE;
+    if (!IsRenderTextureValid(g_ui_composite_target) ||
+        g_ui_composite_target.texture.width != target_width ||
+        g_ui_composite_target.texture.height != target_height) {
+        if (IsRenderTextureValid(g_ui_composite_target))
+            UnloadRenderTexture(g_ui_composite_target);
+        g_ui_composite_target = LoadRenderTexture(target_width, target_height);
+        if (IsRenderTextureValid(g_ui_composite_target))
+            SetTextureFilter(g_ui_composite_target.texture, TEXTURE_FILTER_BILINEAR);
+    }
+    return IsRenderTextureValid(g_ui_composite_target);
+}
 
 UI* GetLeftUI(UI* ui) {
     return (UI*)(ui->left);
@@ -86,7 +124,8 @@ UI* GetPrimaryUI() {
 void ResizeUI(UI* ui) {
     for (size_t i = 0; i < ui->panels.size; i++) {
         UnloadRenderTexture(ui->panels.data[i].texture);
-        ui->panels.data[i].texture = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
+        ui->panels.data[i].texture = LoadRenderTexture(GetScreenWidth() * UI_AA_SCALE, GetScreenHeight() * UI_AA_SCALE);
+        if (IsRenderTextureValid(ui->panels.data[i].texture)) SetTextureFilter(ui->panels.data[i].texture.texture, TEXTURE_FILTER_BILINEAR);
     }
     if (ui->left && ui->right) {
         ResizeUI((UI*)(ui->left));
@@ -101,7 +140,8 @@ UI* GenerateUI() {
 
 void SetupPanel(Panel* panel, const char* name) {
     strcpy(panel->name, name);
-    panel->texture = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
+    panel->texture = LoadRenderTexture(GetScreenWidth() * UI_AA_SCALE, GetScreenHeight() * UI_AA_SCALE);
+    if (IsRenderTextureValid(panel->texture)) SetTextureFilter(panel->texture.texture, TEXTURE_FILTER_BILINEAR);
 }
 
 BOOL UIRequestsBlockInput() {
@@ -218,7 +258,12 @@ static void DrawUI_helper(UI* ui, size_t x, size_t y, size_t w, size_t h) {
         if (IsRenderTextureValid(ui->panels.data[ui->selected].texture))
             DrawTexturePro(
                 ui->panels.data[ui->selected].texture.texture,
-                (Rectangle){ 0, ui->panels.data[ui->selected].texture.texture.height - h + namebar_dif, w, -1*((int)h - namebar_dif) },
+                (Rectangle){
+                    0,
+                    (float)ui->panels.data[ui->selected].texture.texture.height - ((float)h - namebar_dif) * UI_AA_SCALE,
+                    (float)w * UI_AA_SCALE,
+                    -((float)h - namebar_dif) * UI_AA_SCALE
+                },
                 (Rectangle){ x, y + namebar_dif, w, h - namebar_dif },
                 (Vector2){ 0, 0 },
                 0.0f,
@@ -234,7 +279,8 @@ static void DrawUI_helper(UI* ui, size_t x, size_t y, size_t w, size_t h) {
 
 static void DrawPopup(size_t x, size_t y, size_t w, size_t h) {
     EZ_ASSERT(g_popup != NULL, "Cannot draw a null popup!");
-    g_current_ui_target = (RenderTexture2D){ 0 };
+    if (g_current_ui_target.id != g_ui_composite_target.id)
+        g_current_ui_target = (RenderTexture2D){ 0 };
     DrawRectangle(x, y, w, h, (Color){ 255, 255, 255, 100 });
     if (g_popup->behavior != NULL) {
         int result = g_popup->behavior(x, y, w, h);
@@ -348,6 +394,14 @@ static void HandleTextInput() {
 void DrawUI(UI* ui, size_t x, size_t y, size_t w, size_t h) {
     if (InputButtonUp(IK_MOUSELEFT)) g_active_ui_element = NULL;
     if (UIRequestsBlockInput()) BlockInputs();
+    BOOL use_supersampling = EnsureUIAAResources();
+    RenderTexture2D previous_target = g_current_ui_target;
+    if (use_supersampling) {
+        BeginUITextureMode(g_ui_composite_target);
+        ClearBackground((Color){ 0, 0, 0, 0 });
+        g_current_ui_target = g_ui_composite_target;
+    }
+
     DrawUI_helper(g_fullscreen_ui ? g_fullscreen_ui : ui, x, y, w, h);
     if (g_popup != NULL) {
         UnblockInputs();
@@ -363,6 +417,19 @@ void DrawUI(UI* ui, size_t x, size_t y, size_t w, size_t h) {
         HandleTextInput();
     }
     DrawNotifications();
+    if (use_supersampling) {
+        EndUITextureMode();
+        g_current_ui_target = previous_target;
+        DrawTexturePro(
+            g_ui_composite_target.texture,
+            (Rectangle){ 0, (float)g_ui_composite_target.texture.height,
+                         (float)g_ui_composite_target.texture.width,
+                         -(float)g_ui_composite_target.texture.height },
+            (Rectangle){ 0, 0, (float)GetScreenWidth(), (float)GetScreenHeight() },
+            (Vector2){ 0, 0 },
+            0.0f,
+            WHITE);
+    }
 }
 
 static void PreRenderUI_helper(UI* ui, BOOL full) {
@@ -379,7 +446,7 @@ static void PreRenderUI_helper(UI* ui, BOOL full) {
             g_ui_position.y += NAMEBAR_HEIGHT;
             g_ui_size.y -= NAMEBAR_HEIGHT;
         }
-        BeginTextureMode(ui->panels.data[ui->selected].texture);
+        BeginUITextureMode(ui->panels.data[ui->selected].texture);
         g_current_ui_target = ui->panels.data[ui->selected].texture;
         ClearBackground((Color){0, 0, 0, 0});
         float uih = full ? (size_t)GetScreenHeight() : ui->h;
@@ -397,7 +464,7 @@ static void PreRenderUI_helper(UI* ui, BOOL full) {
         ui->panels.data[ui->selected].autoheight = g_ui_cursor.y;
         ui->panels.data[ui->selected].draw(full ? (size_t)GetScreenWidth() : ui->w, uih);
         ui->panels.data[ui->selected].autoheight = g_ui_cursor.y - ui->panels.data[ui->selected].autoheight;
-        EndTextureMode();
+        EndUITextureMode();
     }
 }
 
@@ -411,7 +478,12 @@ void PreRenderUI(UI* ui) {
 void DestroyUI(UI* ui) {
     if (g_scratch_target_in_use) {
         UnloadRenderTexture(g_ui_scratch_target);
+        g_ui_scratch_target = (RenderTexture2D){ 0 };
         g_scratch_target_in_use = FALSE;
+    }
+    if (IsRenderTextureValid(g_ui_composite_target)) {
+        UnloadRenderTexture(g_ui_composite_target);
+        g_ui_composite_target = (RenderTexture2D){ 0 };
     }
     if (g_popup_origin != NULL) {
         CleanPopup(g_popup_origin);
@@ -1187,17 +1259,18 @@ BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_
     if (box_width < 0) return retval;
     g_ui_cursor.x += text_size.x + labeloffset;
     if (g_scratch_target_in_use &&
-        (g_ui_scratch_target.texture.width  != GetScreenWidth() ||
-         g_ui_scratch_target.texture.height != GetScreenHeight())) {
+        (g_ui_scratch_target.texture.width  != GetScreenWidth() * UI_AA_SCALE ||
+         g_ui_scratch_target.texture.height != GetScreenHeight() * UI_AA_SCALE)) {
         UnloadRenderTexture(g_ui_scratch_target);
         g_scratch_target_in_use = FALSE;
     }
     if (!g_scratch_target_in_use) {
-        g_ui_scratch_target = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
+        g_ui_scratch_target = LoadRenderTexture(GetScreenWidth() * UI_AA_SCALE, GetScreenHeight() * UI_AA_SCALE);
+        if (IsRenderTextureValid(g_ui_scratch_target)) SetTextureFilter(g_ui_scratch_target.texture, TEXTURE_FILTER_BILINEAR);
         g_scratch_target_in_use = TRUE;
     }
-    if (g_current_ui_target.id != 0) EndTextureMode();
-    BeginTextureMode(g_ui_scratch_target);
+    if (g_current_ui_target.id != 0) EndUITextureMode();
+    BeginUITextureMode(g_ui_scratch_target);
     if (g_textinput_data.data == data) ClearBackground(MappedColor(UI_TEXT_INPUT_FOCUS_COLOR));
     else ClearBackground(MappedColor(UI_TEXT_INPUT_BG_COLOR));
     Vector2 buffer_text_size = MeasureTextEx(FontAsset(), buffer, LINE_HEIGHT, 0);
@@ -1212,13 +1285,18 @@ BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_
             DrawRectangle(MeasureTextEx(FontAsset(), b, LINE_HEIGHT, 0).x + xstart, 2, 2, LINE_HEIGHT - 5, MappedColor(UI_TEXT_COLOR));
         } else if (data->arbitrary_timer > s_cursor_limit) data->arbitrary_timer = 0.0f;
     }
-    EndTextureMode();
-    if (g_current_ui_target.id != 0) BeginTextureMode(g_current_ui_target);
+    EndUITextureMode();
+    if (g_current_ui_target.id != 0) BeginUITextureMode(g_current_ui_target);
     BOOL g_ui_disabled_bak = g_ui_disabled;
     if (size == 0) DisableUI();
     DrawTexturePro(
         g_ui_scratch_target.texture,
-        (Rectangle){ 0, g_ui_scratch_target.texture.height - LINE_HEIGHT + 2, box_width, -(LINE_HEIGHT - 2) },
+        (Rectangle){
+            0,
+            (float)g_ui_scratch_target.texture.height - LINE_HEIGHT * UI_AA_SCALE + 2 * UI_AA_SCALE,
+            box_width * UI_AA_SCALE,
+            -(LINE_HEIGHT - 2) * UI_AA_SCALE
+        },
         (Rectangle){ g_ui_cursor.x, g_ui_cursor.y, box_width, LINE_HEIGHT - 2 },
         (Vector2){ 0, 0 },
         0.0f,
@@ -1285,11 +1363,11 @@ void EnableUI() {
 }
 
 void PausePreRender() {
-    if (g_current_ui_target.id != 0) EndTextureMode();
+    if (g_current_ui_target.id != 0) EndUITextureMode();
 }
 
 void ResumePreRender() {
-    if (g_current_ui_target.id != 0) BeginTextureMode(g_current_ui_target);
+    if (g_current_ui_target.id != 0) BeginUITextureMode(g_current_ui_target);
 }
 
 void ToggleFullScreen() {

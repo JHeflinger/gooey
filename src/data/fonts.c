@@ -7,6 +7,8 @@ static Font g_font_italic;
 void InitializeFonts() {
     g_font = LoadFontEx("fonts/OpenSans-Regular.ttf", MAX_FONT_SIZE, NULL, 0);
     g_font_italic = LoadFontEx("fonts/OpenSans-Italic.ttf", MAX_FONT_SIZE, NULL, 0);
+    SetTextureFilter(g_font.texture, TEXTURE_FILTER_BILINEAR);
+    SetTextureFilter(g_font_italic.texture, TEXTURE_FILTER_BILINEAR);
 }
 
 Font FontAsset() {
