@@ -1129,7 +1129,7 @@ void UIDropList_(PersistantUIData* data, const char* label, size_t width, size_t
                 }
             }
             if (selected == i) {
-                DrawRectangle(g_ui_cursor.x, g_ui_cursor.y + 2, clickwidth - 30, LINE_HEIGHT - 4, MappedColor(PANEL_BTN_HVR_COLOR));
+                DrawRectangle(g_ui_cursor.x, g_ui_cursor.y + 2, clickwidth - 30, LINE_HEIGHT - 4, MappedColor(PANEL_BTN_SLC_COLOR));
             }
             UIDrawText(items[i]);
         }
