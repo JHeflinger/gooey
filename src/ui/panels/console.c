@@ -93,7 +93,7 @@ static float CalculateLogHeight(float width) {
 
 static BOOL DrawLog(float* cursory, float width, size_t* index) {
     if (g_outputbuffer[*index][0] == '\0') return FALSE;
-    MessageLevel logfilter = !ConfigHas("logfilter") || ConfigGetMessageLevel("logfilter");
+    MessageLevel logfilter = ConfigHas("logfilter") ? ConfigGetMessageLevel("logfilter") : LEVEL_NONE;
     if (logfilter != LEVEL_NONE) {
         BOOL yes = logfilter == g_loglevels[*index];
         if ((!ConfigHas("limitlogs") || ConfigGetBool("limitlogs")) && g_loglevels[*index] > logfilter) yes = TRUE;
