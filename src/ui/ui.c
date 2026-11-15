@@ -1152,11 +1152,11 @@ void UIDivider(size_t w) {
 }
 
 void UIDividerLabeled(size_t w, const char* label) {
-    float tratio = 2.0f * UITextWidth(label)  / (w - 20.0f);
+    float tratio = 3.0f * UITextWidth(label)  / (w - 20.0f);
     float thresh = (w - 20.0f) * (1.0f - tratio);
     DrawRectangleGradientH(UIGetCursor().x + thresh, UIGetCursor().y + (LINE_HEIGHT/2.0f) - 1, w - 20.0f - thresh, 2, MappedColor(UI_DIVIDER_COLOR), (Color){ 0, 0, 0, 0 });
     UIDivider(thresh);
-    UIMoveCursor(w - UITextWidth(label) - 30, -20);
+    UIMoveCursor(w - UITextWidth(label) - 20, -20);
     UIDrawItalicText(label);
 }
 
