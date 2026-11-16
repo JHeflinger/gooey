@@ -7,8 +7,10 @@
 #include "util/logger.h"
 #include <easylogger.h>
 #include <string.h>
+#include <math.h>
 
 #define UI_AA_SCALE 2
+#define UI_SCISSOR_STACK_SIZE 8
 
 IMPL_ARRLIST(Panel);
 IMPL_ARRLIST(UIConfig);
@@ -56,9 +58,6 @@ static PersistantUIData* g_active_ui_element = NULL;
 static DropdownMenuData g_dropdownmenu_data = { 0 };
 static TextInputData g_textinput_data = { 0 };
 static BOOL g_was_ui_element_just_used = FALSE;
-static RenderTexture2D g_ui_scratch_target = { 0 };
-static RenderTexture2D g_current_ui_target = { 0 };
-static BOOL g_scratch_target_in_use = FALSE;
 static BOOL g_ui_disabled = FALSE;
 static UI* g_fullscreen_ui = NULL;
 static UI* g_current_prendered_ui = NULL;
@@ -68,41 +67,108 @@ static char g_dragtext_buf[32] = { 0 };
 static PersistantUIData* g_dragtext_owner = NULL;
 static PersistantUIData* g_last_click_owner = NULL;
 static double g_last_click_time = 0.0;
-static RenderTexture2D g_ui_composite_target = { 0 };
-static BOOL g_ui_mode2d_active = FALSE;
+static RenderTexture2D g_ui_target = { 0 };
+static BOOL g_ui_use_target = FALSE;
+static BOOL g_ui_drawing = FALSE;
+static BOOL g_ui_paused = FALSE;
+static float g_ui_scale = 1.0f;
+static Vector2 g_ui_origin = { 0 };
+static Rectangle g_ui_scissors[UI_SCISSOR_STACK_SIZE] = { 0 };
+static int g_ui_scissor_depth = 0;
+static BOOL g_ui_panels_rendered = FALSE;
+static UI* g_ui_frame_fullscreen = NULL;
+static Rectangle g_ui_root = { 0 };
+static BOOL g_ui_root_known = FALSE;
+static BOOL g_ui_root_tracks_screen = TRUE;
 
-static void BeginUITextureMode(RenderTexture2D target) {
-    BeginTextureMode(target);
+static void ApplyUICamera() {
     Camera2D camera = { 0 };
-    camera.zoom = (float)UI_AA_SCALE;
+    camera.zoom = g_ui_scale;
+    camera.offset = (Vector2){ g_ui_origin.x * g_ui_scale, g_ui_origin.y * g_ui_scale };
     BeginMode2D(camera);
-    g_ui_mode2d_active = TRUE;
 }
 
-static void EndUITextureMode() {
-    if (g_ui_mode2d_active) {
-        EndMode2D();
-        g_ui_mode2d_active = FALSE;
+static void ApplyUIScissor() {
+    if (g_ui_scissor_depth == 0) return;
+    Rectangle r = g_ui_scissors[g_ui_scissor_depth - 1];
+    int x0 = (int)floorf(r.x * g_ui_scale);
+    int y0 = (int)floorf(r.y * g_ui_scale);
+    int x1 = (int)ceilf((r.x + r.width) * g_ui_scale);
+    int y1 = (int)ceilf((r.y + r.height) * g_ui_scale);
+    BeginScissorMode(x0, y0, x1 > x0 ? x1 - x0 : 0, y1 > y0 ? y1 - y0 : 0);
+}
+
+static void BindUIState() {
+    if (g_ui_drawing) return;
+    if (g_ui_use_target) BeginTextureMode(g_ui_target);
+    ApplyUICamera();
+    ApplyUIScissor();
+    g_ui_drawing = TRUE;
+}
+
+static void UnbindUIState() {
+    if (!g_ui_drawing) return;
+    if (g_ui_scissor_depth > 0) EndScissorMode();
+    EndMode2D();
+    if (g_ui_use_target) EndTextureMode();
+    g_ui_drawing = FALSE;
+}
+
+static void SetUIOrigin(float x, float y) {
+    g_ui_origin = (Vector2){ x, y };
+    if (!g_ui_drawing) return;
+    EndMode2D();
+    ApplyUICamera();
+}
+
+static void PushUIScissor(Rectangle rect) {
+    EZ_ASSERT(g_ui_scissor_depth < UI_SCISSOR_STACK_SIZE, "UI scissor stack overflow");
+    if (rect.width < 0) rect.width = 0;
+    if (rect.height < 0) rect.height = 0;
+    if (g_ui_scissor_depth > 0) {
+        Rectangle parent = g_ui_scissors[g_ui_scissor_depth - 1];
+        float x0 = rect.x > parent.x ? rect.x : parent.x;
+        float y0 = rect.y > parent.y ? rect.y : parent.y;
+        float x1 = rect.x + rect.width < parent.x + parent.width ? rect.x + rect.width : parent.x + parent.width;
+        float y1 = rect.y + rect.height < parent.y + parent.height ? rect.y + rect.height : parent.y + parent.height;
+        rect = (Rectangle){ x0, y0, x1 > x0 ? x1 - x0 : 0, y1 > y0 ? y1 - y0 : 0 };
     }
-    EndTextureMode();
+    g_ui_scissors[g_ui_scissor_depth] = rect;
+    g_ui_scissor_depth++;
+    if (g_ui_drawing) ApplyUIScissor();
 }
 
-static BOOL EnsureUIAAResources() {
+static void PopUIScissor() {
+    EZ_ASSERT(g_ui_scissor_depth > 0, "UI scissor stack underflow");
+    g_ui_scissor_depth--;
+    if (!g_ui_drawing) return;
+    if (g_ui_scissor_depth > 0) ApplyUIScissor();
+    else EndScissorMode();
+}
+
+static BOOL EnsureUITarget() {
     int width = GetScreenWidth();
     int height = GetScreenHeight();
     if (width <= 0 || height <= 0) return FALSE;
     int target_width = width * UI_AA_SCALE;
     int target_height = height * UI_AA_SCALE;
-    if (!IsRenderTextureValid(g_ui_composite_target) ||
-        g_ui_composite_target.texture.width != target_width ||
-        g_ui_composite_target.texture.height != target_height) {
-        if (IsRenderTextureValid(g_ui_composite_target))
-            UnloadRenderTexture(g_ui_composite_target);
-        g_ui_composite_target = LoadRenderTexture(target_width, target_height);
-        if (IsRenderTextureValid(g_ui_composite_target))
-            SetTextureFilter(g_ui_composite_target.texture, TEXTURE_FILTER_BILINEAR);
+    if (!IsRenderTextureValid(g_ui_target) ||
+        g_ui_target.texture.width != target_width ||
+        g_ui_target.texture.height != target_height) {
+        if (IsRenderTextureValid(g_ui_target))
+            UnloadRenderTexture(g_ui_target);
+        g_ui_target = LoadRenderTexture(target_width, target_height);
+        if (IsRenderTextureValid(g_ui_target))
+            SetTextureFilter(g_ui_target.texture, TEXTURE_FILTER_BILINEAR);
+        g_ui_panels_rendered = FALSE;
     }
-    return IsRenderTextureValid(g_ui_composite_target);
+    return IsRenderTextureValid(g_ui_target);
+}
+
+static Rectangle UIRootRect() {
+    if (!g_ui_root_known || g_ui_root_tracks_screen)
+        return (Rectangle){ 0, 0, (float)GetScreenWidth(), (float)GetScreenHeight() };
+    return g_ui_root;
 }
 
 UI* GetLeftUI(UI* ui) {
@@ -121,16 +187,8 @@ UI* GetPrimaryUI() {
     return g_primary_ui;
 }
 
-void ResizeUI(UI* ui) {
-    for (size_t i = 0; i < ui->panels.size; i++) {
-        UnloadRenderTexture(ui->panels.data[i].texture);
-        ui->panels.data[i].texture = LoadRenderTexture(GetScreenWidth() * UI_AA_SCALE, GetScreenHeight() * UI_AA_SCALE);
-        if (IsRenderTextureValid(ui->panels.data[i].texture)) SetTextureFilter(ui->panels.data[i].texture.texture, TEXTURE_FILTER_BILINEAR);
-    }
-    if (ui->left && ui->right) {
-        ResizeUI((UI*)(ui->left));
-        ResizeUI((UI*)(ui->right));
-    }
+void ResizeUI() {
+    EnsureUITarget();
 }
 
 UI* GenerateUI() {
@@ -140,8 +198,6 @@ UI* GenerateUI() {
 
 void SetupPanel(Panel* panel, const char* name) {
     strcpy(panel->name, name);
-    panel->texture = LoadRenderTexture(GetScreenWidth() * UI_AA_SCALE, GetScreenHeight() * UI_AA_SCALE);
-    if (IsRenderTextureValid(panel->texture)) SetTextureFilter(panel->texture.texture, TEXTURE_FILTER_BILINEAR);
 }
 
 BOOL UIRequestsBlockInput() {
@@ -199,22 +255,33 @@ void UpdateUI(UI* ui) {
     UnblockInputs();
 }
 
-static void DrawUI_helper(UI* ui, size_t x, size_t y, size_t w, size_t h) {
+static void LayoutUI(UI* ui, size_t x, size_t y, size_t w, size_t h) {
     EZ_ASSERT((ui->left && ui->right) || (!ui->left && !ui->right), "UI branches must be split evenly");
     ui->w = w;
     ui->h = h;
     ui->x = x;
     ui->y = y;
+    if (ui->left && ui->right) {
+        if (ui->vertical) {
+            LayoutUI((UI*)(ui->left), x, y, w, ui->divide);
+            LayoutUI((UI*)(ui->right), x, y + ui->divide, w, h - ui->divide);
+        } else {
+            LayoutUI((UI*)(ui->left), x, y, ui->divide, h);
+            LayoutUI((UI*)(ui->right), x + ui->divide, y, w - ui->divide, h);
+        }
+    }
+}
+
+static void DrawUIChrome(UI* ui) {
+    size_t x = ui->x;
+    size_t y = ui->y;
+    size_t w = ui->w;
+    size_t h = ui->h;
 
     if (ui->left && ui->right) {
         // draw inner ui
-        if (ui->vertical) {
-            DrawUI_helper((UI*)(ui->left), x, y, w, ui->divide);
-            DrawUI_helper((UI*)(ui->right), x, y + ui->divide, w, h - ui->divide);
-        } else {
-            DrawUI_helper((UI*)(ui->left), x, y, ui->divide, h);
-            DrawUI_helper((UI*)(ui->right), x + ui->divide, y, w - ui->divide, h);
-        }
+        DrawUIChrome((UI*)(ui->left));
+        DrawUIChrome((UI*)(ui->right));
 
         // draw divider
         if (ui == g_divider_instance) {
@@ -235,7 +302,6 @@ static void DrawUI_helper(UI* ui, size_t x, size_t y, size_t w, size_t h) {
             if (!g_divider_active) g_divider_instance = NULL;
         }
     } else {
-        DrawRectangle(x, y, w, h, MappedColor(PANEL_BG_COLOR));
         float namebar_dif = ui->panels.data[ui->selected].name[0] != 0 && !ui->panels.data[ui->selected].flush ? NAMEBAR_HEIGHT : 0.0f;
         if (namebar_dif > 0.0) {
             DrawRectangle(x, y, w, NAMEBAR_HEIGHT, MappedColor(PANEL_NB_COLOR));
@@ -255,20 +321,6 @@ static void DrawUI_helper(UI* ui, size_t x, size_t y, size_t w, size_t h) {
 				xplus += tag_len + 20 + 5;
 			}
         }
-        if (IsRenderTextureValid(ui->panels.data[ui->selected].texture))
-            DrawTexturePro(
-                ui->panels.data[ui->selected].texture.texture,
-                (Rectangle){
-                    0,
-                    (float)ui->panels.data[ui->selected].texture.texture.height - ((float)h - namebar_dif) * UI_AA_SCALE,
-                    (float)w * UI_AA_SCALE,
-                    -((float)h - namebar_dif) * UI_AA_SCALE
-                },
-                (Rectangle){ x, y + namebar_dif, w, h - namebar_dif },
-                (Vector2){ 0, 0 },
-                0.0f,
-                (Color){ 255, 255, 255, 255 });
-
         size_t th = 1;
         if (y != 0) DrawLineEx((Vector2){x, y + (th/2)}, (Vector2){x + w, y + (th/2)}, th, MappedColor(PANEL_DIVIDER_COLOR));
         if (x != 0) DrawLineEx((Vector2){x + (th/2), y}, (Vector2){x + (th/2), y + h}, th, MappedColor(PANEL_DIVIDER_COLOR));
@@ -279,8 +331,6 @@ static void DrawUI_helper(UI* ui, size_t x, size_t y, size_t w, size_t h) {
 
 static void DrawPopup(size_t x, size_t y, size_t w, size_t h) {
     EZ_ASSERT(g_popup != NULL, "Cannot draw a null popup!");
-    if (g_current_ui_target.id != g_ui_composite_target.id)
-        g_current_ui_target = (RenderTexture2D){ 0 };
     DrawRectangle(x, y, w, h, (Color){ 255, 255, 255, 100 });
     if (g_popup->behavior != NULL) {
         int result = g_popup->behavior(x, y, w, h);
@@ -391,18 +441,90 @@ static void HandleTextInput() {
     if (pre_cursor != g_textinput_data.cursor) g_textinput_data.data->arbitrary_timer = 0.0f;
 }
 
+static void RenderUIPanels_helper(UI* ui) {
+    if (ui->left && ui->right) {
+        RenderUIPanels_helper((UI*)(ui->left));
+        RenderUIPanels_helper((UI*)(ui->right));
+        return;
+    }
+    Panel* panel = &(ui->panels.data[ui->selected]);
+    SetUIOrigin(0, 0);
+    DrawRectangle(ui->x, ui->y, ui->w, ui->h, MappedColor(PANEL_BG_COLOR));
+    if (!panel->draw) return;
+    g_ui_cursor = (Vector2){ 10, 5 };
+    g_ui_position = (Vector2){ ui->x, ui->y };
+    g_ui_size = (Vector2){ ui->w, ui->h };
+    g_current_prendered_ui = ui;
+    if (panel->name[0] != 0 && !panel->flush) {
+        g_ui_position.y += NAMEBAR_HEIGHT;
+        g_ui_size.y -= NAMEBAR_HEIGHT;
+    }
+    PushUIScissor((Rectangle){ g_ui_position.x, g_ui_position.y, g_ui_size.x, g_ui_size.y });
+    SetUIOrigin(g_ui_position.x, g_ui_position.y);
+    float uih = ui->h;
+    if (panel->scrollable && panel->autoheight != 0.0f) {
+        if (HoveredPanel() && strcmp(HoveredPanel(), panel->name) == 0) {
+            if (InputKeyPressed(IK_ENTER)) panel->autoscroll = 0.0f;
+            panel->autoscroll -= 18.0f * GetMouseWheelMove();
+        }
+        if (panel->autoscroll > panel->autoheight - uih + 50)
+            panel->autoscroll = panel->autoheight - uih + 50;
+        if (panel->autoscroll < 0)
+            panel->autoscroll = 0.0f;
+        UIMoveCursor(0, 0 - panel->autoscroll);
+    }
+    panel->autoheight = g_ui_cursor.y;
+    panel->draw(ui->w, uih);
+    panel->autoheight = g_ui_cursor.y - panel->autoheight;
+    PopUIScissor();
+    SetUIOrigin(0, 0);
+}
+
+static void RenderUIPanels(UI* ui) {
+    if (UIRequestsBlockInput()) BlockInputs();
+    g_ui_frame_fullscreen = g_fullscreen_ui;
+    UI* root = g_ui_frame_fullscreen ? g_ui_frame_fullscreen : ui;
+    Rectangle rect = UIRootRect();
+    LayoutUI(root, rect.x, rect.y, rect.width, rect.height);
+    g_ui_scissor_depth = 0;
+    g_ui_origin = (Vector2){ 0, 0 };
+    g_ui_paused = FALSE;
+    BindUIState();
+    if (g_ui_use_target) ClearBackground((Color){ 0, 0, 0, 0 });
+    RenderUIPanels_helper(root);
+    g_ui_scissor_depth = 0;
+    UnbindUIState();
+    g_ui_panels_rendered = TRUE;
+    UnblockInputs();
+}
+
+void PreRenderUI(UI* ui) {
+    g_ui_use_target = EnsureUITarget();
+    g_ui_scale = g_ui_use_target ? (float)UI_AA_SCALE : 1.0f;
+    if (!g_ui_use_target) return;
+    RenderUIPanels(ui);
+}
+
 void DrawUI(UI* ui, size_t x, size_t y, size_t w, size_t h) {
+    g_ui_use_target = EnsureUITarget();
+    g_ui_scale = g_ui_use_target ? (float)UI_AA_SCALE : 1.0f;
+    g_ui_root = (Rectangle){ x, y, w, h };
+    g_ui_root_known = TRUE;
+    g_ui_root_tracks_screen = x == 0 && y == 0 && w == (size_t)GetScreenWidth() && h == (size_t)GetScreenHeight();
+
+    if (!g_ui_panels_rendered) RenderUIPanels(ui);
+    g_ui_panels_rendered = FALSE;
+
     if (InputButtonUp(IK_MOUSELEFT)) g_active_ui_element = NULL;
     if (UIRequestsBlockInput()) BlockInputs();
-    BOOL use_supersampling = EnsureUIAAResources();
-    RenderTexture2D previous_target = g_current_ui_target;
-    if (use_supersampling) {
-        BeginUITextureMode(g_ui_composite_target);
-        ClearBackground((Color){ 0, 0, 0, 0 });
-        g_current_ui_target = g_ui_composite_target;
-    }
+    UI* root = g_ui_frame_fullscreen ? g_ui_frame_fullscreen : ui;
+    LayoutUI(root, x, y, w, h);
+    g_ui_scissor_depth = 0;
+    g_ui_origin = (Vector2){ 0, 0 };
+    g_ui_paused = FALSE;
+    BindUIState();
 
-    DrawUI_helper(g_fullscreen_ui ? g_fullscreen_ui : ui, x, y, w, h);
+    DrawUIChrome(root);
     if (g_popup != NULL) {
         UnblockInputs();
         if (g_dropdownmenu_data.active) BlockInputs();
@@ -417,14 +539,14 @@ void DrawUI(UI* ui, size_t x, size_t y, size_t w, size_t h) {
         HandleTextInput();
     }
     DrawNotifications();
-    if (use_supersampling) {
-        EndUITextureMode();
-        g_current_ui_target = previous_target;
+    g_ui_scissor_depth = 0;
+    UnbindUIState();
+    if (g_ui_use_target) {
         DrawTexturePro(
-            g_ui_composite_target.texture,
-            (Rectangle){ 0, (float)g_ui_composite_target.texture.height,
-                         (float)g_ui_composite_target.texture.width,
-                         -(float)g_ui_composite_target.texture.height },
+            g_ui_target.texture,
+            (Rectangle){ 0, (float)g_ui_target.texture.height,
+                         (float)g_ui_target.texture.width,
+                         -(float)g_ui_target.texture.height },
             (Rectangle){ 0, 0, (float)GetScreenWidth(), (float)GetScreenHeight() },
             (Vector2){ 0, 0 },
             0.0f,
@@ -432,59 +554,13 @@ void DrawUI(UI* ui, size_t x, size_t y, size_t w, size_t h) {
     }
 }
 
-static void PreRenderUI_helper(UI* ui, BOOL full) {
-    EZ_ASSERT((ui->left && ui->right) || (!ui->left && !ui->right), "UI branches must be split evenly");
-    if (ui->left && ui->right) {
-        PreRenderUI_helper((UI*)(ui->left), full);
-        PreRenderUI_helper((UI*)(ui->right), full);
-    } else if (IsRenderTextureValid(ui->panels.data[ui->selected].texture) && ui->panels.data[ui->selected].draw) {
-        g_ui_cursor = (Vector2){ 10, 5 };
-        g_ui_position = full ? (Vector2){ 0, 0 } : (Vector2){ ui->x , ui->y };
-        g_ui_size = full ? (Vector2){ GetScreenWidth(), GetScreenHeight() } : (Vector2){ ui->w , ui->h };
-        g_current_prendered_ui = ui;
-        if (ui->panels.data[ui->selected].name[0] != 0 && !ui->panels.data[ui->selected].flush) {
-            g_ui_position.y += NAMEBAR_HEIGHT;
-            g_ui_size.y -= NAMEBAR_HEIGHT;
-        }
-        BeginUITextureMode(ui->panels.data[ui->selected].texture);
-        g_current_ui_target = ui->panels.data[ui->selected].texture;
-        ClearBackground((Color){0, 0, 0, 0});
-        float uih = full ? (size_t)GetScreenHeight() : ui->h;
-        if (ui->panels.data[ui->selected].scrollable && ui->panels.data[ui->selected].autoheight != 0.0f) {
-            if (HoveredPanel() && strcmp(HoveredPanel(), ui->panels.data[ui->selected].name) == 0) {
-                if (InputKeyPressed(IK_ENTER)) ui->panels.data[ui->selected].autoscroll = 0.0f;
-                ui->panels.data[ui->selected].autoscroll -= 18.0f * GetMouseWheelMove();
-            }
-            if (ui->panels.data[ui->selected].autoscroll > ui->panels.data[ui->selected].autoheight - uih + 50)
-                ui->panels.data[ui->selected].autoscroll = ui->panels.data[ui->selected].autoheight - uih + 50;
-            if (ui->panels.data[ui->selected].autoscroll < 0)
-                ui->panels.data[ui->selected].autoscroll = 0.0f;
-            UIMoveCursor(0, 0 - ui->panels.data[ui->selected].autoscroll);
-        }
-        ui->panels.data[ui->selected].autoheight = g_ui_cursor.y;
-        ui->panels.data[ui->selected].draw(full ? (size_t)GetScreenWidth() : ui->w, uih);
-        ui->panels.data[ui->selected].autoheight = g_ui_cursor.y - ui->panels.data[ui->selected].autoheight;
-        EndUITextureMode();
-    }
-}
-
-void PreRenderUI(UI* ui) {
-    if (UIRequestsBlockInput()) BlockInputs();
-    if (g_fullscreen_ui) PreRenderUI_helper(g_fullscreen_ui, TRUE);
-    else PreRenderUI_helper(ui, FALSE);
-    UnblockInputs();
-}
-
 void DestroyUI(UI* ui) {
-    if (g_scratch_target_in_use) {
-        UnloadRenderTexture(g_ui_scratch_target);
-        g_ui_scratch_target = (RenderTexture2D){ 0 };
-        g_scratch_target_in_use = FALSE;
+    if (IsRenderTextureValid(g_ui_target)) {
+        UnloadRenderTexture(g_ui_target);
+        g_ui_target = (RenderTexture2D){ 0 };
     }
-    if (IsRenderTextureValid(g_ui_composite_target)) {
-        UnloadRenderTexture(g_ui_composite_target);
-        g_ui_composite_target = (RenderTexture2D){ 0 };
-    }
+    g_ui_panels_rendered = FALSE;
+    if (g_ui_frame_fullscreen == ui) g_ui_frame_fullscreen = NULL;
     if (g_popup_origin != NULL) {
         CleanPopup(g_popup_origin);
         g_popup_origin = NULL;
@@ -500,12 +576,12 @@ void WipeUI(UI* ui) {
     if (!ui) return;
     if (ui->left) WipeUI((UI*)ui->left);
     if (ui->right) WipeUI((UI*)ui->right);
+    if (g_ui_frame_fullscreen == ui) g_ui_frame_fullscreen = NULL;
 	ARRLIST_Panel_clear(&(ui->panels));
     EZ_FREE(ui);
 }
 
 void DestroyPanel(Panel* panel) {
-    if (IsRenderTextureValid(panel->texture)) UnloadRenderTexture(panel->texture);
     if (panel->clean) panel->clean();
 }
 
@@ -1152,10 +1228,10 @@ void UIDivider(size_t w) {
 }
 
 void UIDividerLabeled(size_t w, const char* label) {
-    float tratio = 3.0f * UITextWidth(label)  / (w - 20.0f);
-    float thresh = (w - 20.0f) * (1.0f - tratio);
-    DrawRectangleGradientH(UIGetCursor().x + thresh, UIGetCursor().y + (LINE_HEIGHT/2.0f) - 1, w - 20.0f - thresh, 2, MappedColor(UI_DIVIDER_COLOR), (Color){ 0, 0, 0, 0 });
-    UIDivider(thresh);
+    float t = (w - 20 - UITextWidth(label)) * 0.75f;
+    float tw = (w - 20 - UITextWidth(label)) * 0.25f;
+    DrawRectangleGradientH(UIGetCursor().x + t, UIGetCursor().y + (LINE_HEIGHT/2.0f) - 1, tw, 2, MappedColor(UI_DIVIDER_COLOR), (Color){ 0, 0, 0, 0 });
+    UIDivider(t);
     UIMoveCursor(w - UITextWidth(label) - 20, -20);
     UIDrawItalicText(label);
 }
@@ -1259,49 +1335,29 @@ BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_
     }
     if (box_width < 0) return retval;
     g_ui_cursor.x += text_size.x + labeloffset;
-    if (g_scratch_target_in_use &&
-        (g_ui_scratch_target.texture.width  != GetScreenWidth() * UI_AA_SCALE ||
-         g_ui_scratch_target.texture.height != GetScreenHeight() * UI_AA_SCALE)) {
-        UnloadRenderTexture(g_ui_scratch_target);
-        g_scratch_target_in_use = FALSE;
+    BOOL g_ui_disabled_bak = g_ui_disabled;
+    if (size == 0) DisableUI();
+    Color box_color = g_textinput_data.data == data ? MappedColor(UI_TEXT_INPUT_FOCUS_COLOR) : MappedColor(UI_TEXT_INPUT_BG_COLOR);
+    Color text_color = MappedColor(UI_TEXT_COLOR);
+    if (g_ui_disabled) {
+        box_color.a = (unsigned char)(box_color.a * 180 / 255);
+        text_color.a = (unsigned char)(text_color.a * 180 / 255);
     }
-    if (!g_scratch_target_in_use) {
-        g_ui_scratch_target = LoadRenderTexture(GetScreenWidth() * UI_AA_SCALE, GetScreenHeight() * UI_AA_SCALE);
-        if (IsRenderTextureValid(g_ui_scratch_target)) SetTextureFilter(g_ui_scratch_target.texture, TEXTURE_FILTER_BILINEAR);
-        g_scratch_target_in_use = TRUE;
-    }
-    if (g_current_ui_target.id != 0) EndUITextureMode();
-    BeginUITextureMode(g_ui_scratch_target);
-    if (g_textinput_data.data == data) ClearBackground(MappedColor(UI_TEXT_INPUT_FOCUS_COLOR));
-    else ClearBackground(MappedColor(UI_TEXT_INPUT_BG_COLOR));
+    DrawRectangleRec((Rectangle){ g_ui_cursor.x, g_ui_cursor.y, box_width, LINE_HEIGHT - 2 }, box_color);
+    PushUIScissor((Rectangle){ g_ui_cursor.x + g_ui_origin.x, g_ui_cursor.y + g_ui_origin.y, box_width, LINE_HEIGHT - 2 });
     Vector2 buffer_text_size = MeasureTextEx(FontAsset(), buffer, LINE_HEIGHT, 0);
     float xstart = 2.0f;
     if (g_textinput_data.data == data && buffer_text_size.x > box_width) xstart -= (buffer_text_size.x - box_width) + 4.0f;
-    DrawTextEx(FontAsset(), buffer, (Vector2){ xstart, 0 }, LINE_HEIGHT, 0, MappedColor(UI_TEXT_COLOR));
+    DrawTextEx(FontAsset(), buffer, (Vector2){ g_ui_cursor.x + xstart, g_ui_cursor.y }, LINE_HEIGHT, 0, text_color);
     if (g_textinput_data.data == data) {
         data->arbitrary_timer += GetFrameTime();
         if (data->arbitrary_timer < s_cursor_limit / 2.0f) {
             char b[1024] = { 0 };
             memcpy(b, buffer, g_textinput_data.cursor);
-            DrawRectangle(MeasureTextEx(FontAsset(), b, LINE_HEIGHT, 0).x + xstart, 2, 2, LINE_HEIGHT - 5, MappedColor(UI_TEXT_COLOR));
+            DrawRectangle(g_ui_cursor.x + MeasureTextEx(FontAsset(), b, LINE_HEIGHT, 0).x + xstart, g_ui_cursor.y + 2, 2, LINE_HEIGHT - 5, text_color);
         } else if (data->arbitrary_timer > s_cursor_limit) data->arbitrary_timer = 0.0f;
     }
-    EndUITextureMode();
-    if (g_current_ui_target.id != 0) BeginUITextureMode(g_current_ui_target);
-    BOOL g_ui_disabled_bak = g_ui_disabled;
-    if (size == 0) DisableUI();
-    DrawTexturePro(
-        g_ui_scratch_target.texture,
-        (Rectangle){
-            0,
-            (float)g_ui_scratch_target.texture.height - LINE_HEIGHT * UI_AA_SCALE + 2 * UI_AA_SCALE,
-            box_width * UI_AA_SCALE,
-            -(LINE_HEIGHT - 2) * UI_AA_SCALE
-        },
-        (Rectangle){ g_ui_cursor.x, g_ui_cursor.y, box_width, LINE_HEIGHT - 2 },
-        (Vector2){ 0, 0 },
-        0.0f,
-        (Color){ 255, 255, 255, g_ui_disabled ? 180 : 255 });
+    PopUIScissor();
     if (!g_ui_disabled && CheckCollisionPointRec(
             GetMousePosition(),
             (Rectangle){g_ui_cursor.x + g_ui_position.x, g_ui_cursor.y + g_ui_position.y, box_width, LINE_HEIGHT - 2})) {
@@ -1364,11 +1420,15 @@ void EnableUI() {
 }
 
 void PausePreRender() {
-    if (g_current_ui_target.id != 0) EndUITextureMode();
+    if (!g_ui_drawing) return;
+    UnbindUIState();
+    g_ui_paused = TRUE;
 }
 
 void ResumePreRender() {
-    if (g_current_ui_target.id != 0) BeginUITextureMode(g_current_ui_target);
+    if (!g_ui_paused) return;
+    g_ui_paused = FALSE;
+    BindUIState();
 }
 
 void ToggleFullScreen() {
@@ -1490,6 +1550,6 @@ void RefreshUI(UI** ui, ARRLIST_Panel panelbank) {
         size_t i = 0;
         LoadUIConfigHelper(ui, &i, panelbank);
         SetPrimaryUI(*ui);
-        ResizeUI(*ui);
+        ResizeUI();
     }
 }

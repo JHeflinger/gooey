@@ -26,7 +26,6 @@ typedef void (*DrawSectionFunction)(size_t width, void* data);
 
 typedef struct {
     char name[MAX_NAME_LEN];
-    RenderTexture2D texture;
     PanelFunction draw;
     PanelFunction update;
     CleanFunction clean;
@@ -81,7 +80,7 @@ void SetPrimaryUI(UI* ui);
 
 UI* GetPrimaryUI();
 
-void ResizeUI(UI* ui);
+void ResizeUI();
 
 UI* GenerateUI();
 
