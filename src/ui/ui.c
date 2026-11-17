@@ -1411,7 +1411,7 @@ static BOOL FilePathValid(const char* path, const char* extension, BOOL existing
 
 BOOL UIChooseFile_(PersistantUIData* data, char* buffer, size_t size, size_t width, const char* extension, BOOL existing) {
     const char* s_button_label = "...";
-    const float s_gap = 4.0f;
+    const float s_gap = 2.0f;
     float button_width = MeasureTextEx(FontAsset(), s_button_label, LINE_HEIGHT, 0).x + 20;
     float box_width = (float)width - button_width - s_gap;
     if (box_width < 0) box_width = 0;
@@ -1422,6 +1422,7 @@ BOOL UIChooseFile_(PersistantUIData* data, char* buffer, size_t size, size_t wid
     BOOL changed = TextInputBox(data, NULL, buffer, size, box_width, TRUE, invalid);
 
     g_ui_cursor = (Vector2){ start.x + box_width + s_gap, start.y };
+    UIMoveCursor(0, -1);
     if (UIButton(s_button_label, 0) && size > 0) {
         const char* filter = extension && extension[0] != '\0' ? extension : NULL;
         nfdchar_t* path = NULL;
@@ -1444,6 +1445,7 @@ BOOL UIChooseFile_(PersistantUIData* data, char* buffer, size_t size, size_t wid
         #define RAW_FREE free
         if (path) RAW_FREE(path);
     }
+    UIMoveCursor(0, 1);
     return changed;
 }
 
