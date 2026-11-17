@@ -1486,6 +1486,24 @@ BOOL UIDropdownSection_(PersistantUIData* data, const char* label, size_t width,
     return changed;
 }
 
+void UIProgressBar(size_t w, float percent) {
+    if (percent < 0.0f) percent = 0.0f;
+    if (percent > 100.0f) percent = 100.0f;
+    DrawRectangle(g_ui_cursor.x, g_ui_cursor.y + 1, w, LINE_HEIGHT - 2,
+                  g_ui_disabled ? MappedColor(UI_BOX_DISABLED) : MappedColor(UI_TEXT_INPUT_BG_COLOR));
+    if (!g_ui_disabled)
+        DrawRectangle(g_ui_cursor.x, g_ui_cursor.y + 1, w * (percent / 100.0f), LINE_HEIGHT - 2,
+                      MappedColor(PROGRESS_COLOR));
+    const char* label = TextFormat("%d%%", (int)(percent + 0.5f));
+    Vector2 text_size = MeasureTextEx(FontAsset(), label, LINE_HEIGHT, 0);
+    Vector2 texpos = g_ui_cursor;
+    texpos.x += ((float)w - text_size.x) / 2.0f;
+    DrawTextEx(FontAsset(), label, texpos, LINE_HEIGHT, 0,
+               g_ui_disabled ? MappedColor(UI_TEXT_DISABLED) : MappedColor(UI_TEXT_COLOR));
+    g_ui_cursor.y += LINE_HEIGHT;
+    g_ui_cursor.x = 10;
+}
+
 void DisableUI() {
     g_ui_disabled = TRUE;
 }

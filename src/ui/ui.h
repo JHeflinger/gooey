@@ -198,6 +198,8 @@ BOOL UIDropdownSection_(PersistantUIData* data, const char* label, size_t width,
 #define UIDropdownSection(label, width, func, param) \
     PERSISTANT_UI(UIDropdownSection_, label, width, func, param)
 
+void UIProgressBar(size_t w, float percent);
+
 void DisableUI();
 
 void EnableUI();
