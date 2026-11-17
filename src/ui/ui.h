@@ -186,6 +186,10 @@ BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_
 #define UITextInput(label, buffer, size, width, noclear) \
     PERSISTANT_UI(UITextInput_, label, buffer, size, width, noclear)
 
+BOOL UIChooseFile_(PersistantUIData* data, char* buffer, size_t size, size_t width, const char* extension, BOOL existing);
+#define UIChooseFile(buffer, size, width, extension, existing) \
+    PERSISTANT_UI(UIChooseFile_, buffer, size, width, extension, existing)
+
 void UIFloatingDropdown_(PersistantUIData* data, size_t width, Vector2 origin, size_t num_items, char** items, DropdownSelectFunction func, void* param);
 #define UIFloatingDropdown(width, origin, num_items, items, func, param) \
     PERSISTANT_UI(UIFloatingDropdown_, width, origin, num_items, items, func, param)

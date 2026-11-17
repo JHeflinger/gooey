@@ -1,4 +1,5 @@
 PROJECT src
 MODULE easyc https://github.com/JHeflinger/EasyC.git include
 MODULE raylib https://github.com/JHeflinger/minis.git raylib
+MODULE nfd https://github.com/JHeflinger/minis.git nfd
 PORT fonts

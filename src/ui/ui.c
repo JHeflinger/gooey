@@ -7,7 +7,9 @@
 #include "util/logger.h"
 #include <easylogger.h>
 #include <string.h>
+#include <ctype.h>
 #include <math.h>
+#include <nfd.h>
 
 #define UI_AA_SCALE 2
 #define UI_SCISSOR_STACK_SIZE 8
@@ -1314,7 +1316,7 @@ void UIDropdownMenu_(PersistantUIData* data, size_t width, size_t num_items, cha
     g_ui_cursor.x = 10;
 }
 
-BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_t size, size_t width, BOOL noclear) {
+static BOOL TextInputBox(PersistantUIData* data, const char* label, char* buffer, size_t size, size_t width, BOOL noclear, BOOL invalid) {
     BOOL retval = FALSE;
     const float s_cursor_limit = 0.5f;
     if (label) {
@@ -1338,12 +1340,14 @@ BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_
     BOOL g_ui_disabled_bak = g_ui_disabled;
     if (size == 0) DisableUI();
     Color box_color = g_textinput_data.data == data ? MappedColor(UI_TEXT_INPUT_FOCUS_COLOR) : MappedColor(UI_TEXT_INPUT_BG_COLOR);
+    if (invalid) box_color = MappedColor(UI_TEXT_INPUT_INVALID_COLOR);
     Color text_color = MappedColor(UI_TEXT_COLOR);
     if (g_ui_disabled) {
         box_color.a = (unsigned char)(box_color.a * 180 / 255);
         text_color.a = (unsigned char)(text_color.a * 180 / 255);
     }
     DrawRectangleRec((Rectangle){ g_ui_cursor.x, g_ui_cursor.y, box_width, LINE_HEIGHT - 2 }, box_color);
+    // clip the (possibly horizontally scrolled) text to the box
     PushUIScissor((Rectangle){ g_ui_cursor.x + g_ui_origin.x, g_ui_cursor.y + g_ui_origin.y, box_width, LINE_HEIGHT - 2 });
     Vector2 buffer_text_size = MeasureTextEx(FontAsset(), buffer, LINE_HEIGHT, 0);
     float xstart = 2.0f;
@@ -1372,6 +1376,75 @@ BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_
     g_ui_cursor.y += LINE_HEIGHT;
     g_ui_disabled = g_ui_disabled_bak;
     return retval;
+}
+
+BOOL UITextInput_(PersistantUIData* data, const char* label, char* buffer, size_t size, size_t width, BOOL noclear) {
+    return TextInputBox(data, label, buffer, size, width, noclear, FALSE);
+}
+
+static BOOL FileExtensionMatches(const char* path, const char* extension) {
+    if (!extension || extension[0] == '\0') return TRUE;
+    const char* ext = strrchr(GetFileName(path), '.');
+    if (!ext || ext[1] == '\0') return FALSE;
+    ext++;
+    size_t len = strlen(ext);
+    const char* token = extension;
+    while (*token) {
+        size_t tlen = strcspn(token, ",;");
+        if (tlen == len) {
+            size_t i = 0;
+            while (i < len && tolower((unsigned char)token[i]) == tolower((unsigned char)ext[i])) i++;
+            if (i == len) return TRUE;
+        }
+        token += tlen;
+        if (*token) token++;
+    }
+    return FALSE;
+}
+
+static BOOL FilePathValid(const char* path, const char* extension, BOOL existing) {
+    if (path[0] == '\0' || GetFileName(path)[0] == '\0') return FALSE;
+    if (DirectoryExists(path) || !FileExtensionMatches(path, extension)) return FALSE;
+    if (existing) return FileExists(path);
+    return DirectoryExists(GetDirectoryPath(path));
+}
+
+BOOL UIChooseFile_(PersistantUIData* data, char* buffer, size_t size, size_t width, const char* extension, BOOL existing) {
+    const char* s_button_label = "...";
+    const float s_gap = 4.0f;
+    float button_width = MeasureTextEx(FontAsset(), s_button_label, LINE_HEIGHT, 0).x + 20;
+    float box_width = (float)width - button_width - s_gap;
+    if (box_width < 0) box_width = 0;
+    Vector2 start = g_ui_cursor;
+
+    // an empty box just means nothing has been chosen yet, so it isn't flagged
+    BOOL invalid = buffer[0] != '\0' && !FilePathValid(buffer, extension, existing);
+    BOOL changed = TextInputBox(data, NULL, buffer, size, box_width, TRUE, invalid);
+
+    g_ui_cursor = (Vector2){ start.x + box_width + s_gap, start.y };
+    if (UIButton(s_button_label, 0) && size > 0) {
+        const char* filter = extension && extension[0] != '\0' ? extension : NULL;
+        nfdchar_t* path = NULL;
+        nfdresult_t result = existing ? NFD_OpenDialog(filter, NULL, &path) : NFD_SaveDialog(filter, NULL, &path);
+        if (result == NFD_OKAY && path) {
+            // the save dialog doesn't add an extension on its own, so use the first one in the filter
+            char suffix[32] = { 0 };
+            if (!existing && filter && !FileExtensionMatches(path, filter))
+                snprintf(suffix, sizeof(suffix), ".%.*s", (int)strcspn(filter, ",;"), filter);
+            if (strlen(path) + strlen(suffix) < size) {
+                snprintf(buffer, size, "%s%s", path, suffix);
+                changed = TRUE;
+            } else {
+                logerror("Chosen file path is too long (%d characters max)", (int)size - 1);
+            }
+            if (g_textinput_data.data == data) g_textinput_data.cursor = strlen(buffer);
+        } else if (result == NFD_ERROR) {
+            logerror("File dialog failed: %s", NFD_GetError());
+        }
+        #define RAW_FREE free
+        if (path) RAW_FREE(path);
+    }
+    return changed;
 }
 
 void UIFloatingDropdown_(PersistantUIData* data, size_t width, Vector2 origin, size_t num_items, char** items, DropdownSelectFunction func, void* param) {
