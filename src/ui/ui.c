@@ -1290,11 +1290,15 @@ void UIDropList_(PersistantUIData* data, const char* label, size_t width, size_t
 
 void UIDropdownMenu_(PersistantUIData* data, size_t width, size_t num_items, char** items, DropdownSelectFunction func, void* param) {
     data->arbitrary_counter = func(param, (size_t)-1, FALSE);
+    if (g_ui_disabled && g_dropdownmenu_data.active && g_dropdownmenu_data.data == data) {
+        g_dropdownmenu_data.func(g_dropdownmenu_data.funcdata, (size_t)-1, TRUE);
+        g_dropdownmenu_data.active = FALSE;
+    }
     Vector2 text_size = MeasureTextEx(FontAsset(), items[data->arbitrary_counter], LINE_HEIGHT, 0);
     float button_width = width < text_size.x + 20 ? text_size.x + 20 : width;
     Color color = MappedColor(PANEL_BTN_BG_COLOR);
     BOOL clicked = FALSE;
-    if (CheckCollisionPointRec(
+    if (!g_ui_disabled && CheckCollisionPointRec(
             GetMousePosition(),
             (Rectangle){g_ui_cursor.x + g_ui_position.x, g_ui_cursor.y + g_ui_position.y + 1, button_width, LINE_HEIGHT - 2})) {
         color = MappedColor(PANEL_BTN_HVR_COLOR);
@@ -1302,10 +1306,12 @@ void UIDropdownMenu_(PersistantUIData* data, size_t width, size_t num_items, cha
         clicked = InputButtonPressed(IK_MOUSELEFT);
     }
     if (clicked) g_was_ui_element_just_used = TRUE;
-    DrawRectangle(g_ui_cursor.x, g_ui_cursor.y + 1, button_width, LINE_HEIGHT - 2, color);
+    DrawRectangle(g_ui_cursor.x, g_ui_cursor.y + 1, button_width, LINE_HEIGHT - 2,
+                  g_ui_disabled ? MappedColor(UI_BOX_DISABLED) : color);
     Vector2 texpos = g_ui_cursor;
     texpos.x += (button_width - text_size.x) / 2.0f;
-    DrawTextEx(FontAsset(), items[data->arbitrary_counter], texpos, LINE_HEIGHT, 0, MappedColor(UI_TEXT_COLOR));
+    DrawTextEx(FontAsset(), items[data->arbitrary_counter], texpos, LINE_HEIGHT, 0,
+               g_ui_disabled ? MappedColor(UI_TEXT_DISABLED) : MappedColor(UI_TEXT_COLOR));
     if (clicked) {
         g_dropdownmenu_data = (DropdownMenuData) {
             data, items, num_items, TRUE, button_width, param, func,
@@ -1343,8 +1349,12 @@ static BOOL TextInputBox(PersistantUIData* data, const char* label, char* buffer
     if (invalid) box_color = MappedColor(UI_TEXT_INPUT_INVALID_COLOR);
     Color text_color = MappedColor(UI_TEXT_COLOR);
     if (g_ui_disabled) {
-        box_color.a = (unsigned char)(box_color.a * 180 / 255);
-        text_color.a = (unsigned char)(text_color.a * 180 / 255);
+        box_color.r = (unsigned char)(box_color.r * 180 / 255);
+        box_color.g = (unsigned char)(box_color.g * 180 / 255);
+        box_color.b = (unsigned char)(box_color.b * 180 / 255);
+        text_color.r = (unsigned char)(text_color.r * 180 / 255);
+        text_color.g = (unsigned char)(text_color.g * 180 / 255);
+        text_color.b = (unsigned char)(text_color.b * 180 / 255);
     }
     DrawRectangleRec((Rectangle){ g_ui_cursor.x, g_ui_cursor.y, box_width, LINE_HEIGHT - 2 }, box_color);
     // clip the (possibly horizontally scrolled) text to the box
