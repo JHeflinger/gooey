@@ -43,7 +43,13 @@ typedef struct {
     HASHMAP_BlackBoard blackboard;
 } AbstractConfig;
 
+typedef void (*ConfigVisitor)(const char* key, BlackBoardValue value, void* userdata);
+
 BOOL ConfigHas(const char* key);
+
+size_t ConfigCount();
+
+void ConfigForEach(ConfigVisitor visitor, void* userdata);
 
 void ConfigSet(const char* key, BlackBoardValue val);
 

@@ -17,6 +17,17 @@ BOOL ConfigHas(const char* key) {
     return HASHMAP_BlackBoard_has(&(g_config.blackboard), bk);
 }
 
+size_t ConfigCount() {
+    return g_config.blackboard.size;
+}
+
+void ConfigForEach(ConfigVisitor visitor, void* userdata) {
+    for (size_t i = 0; i < g_config.blackboard.capacity; i++) {
+        HASHENTRY_BlackBoard* entry = &(g_config.blackboard.entries[i]);
+        if (entry->used == 1) visitor(entry->key.str, entry->value, userdata);
+    }
+}
+
 void ConfigSet(const char* key, BlackBoardValue val) {
     EZ_ASSERT(strlen(key) < BLACKBOARD_STRING_SIZE, "Key is too large for blackboard");
     BlackBoardKey bk = { 0 };
