@@ -12,7 +12,7 @@ static BOOL IsActionKey(BindAction action) {
     return (action == BIND_KEY_DOWN || action == BIND_KEY_PRESSED || action == BIND_KEY_RELEASED || action == BIND_KEY_END);
 }
 
-static void AddBindPath(BindNode** root, const char* name, BindFunc func, BindCommand command) {
+static void AddBindPath(BindNode** root, const char* name, BindFunc func, BindCondition condition, BindCommand command) {
     for (size_t i = 0; i < (*root)->nodes.size; i++) {
         BindCommand bc = ((BindNode*)((*root)->nodes.data[i]))->command;
         if (memcmp(&bc, &command, sizeof(BindCommand)) == 0) {
@@ -23,6 +23,7 @@ static void AddBindPath(BindNode** root, const char* name, BindFunc func, BindCo
     }
     BindNode* node = EZ_ALLOC(1, sizeof(BindNode));
     node->command = command;
+    node->condition = condition;
     if (IsActionEndpoint(command.action)) {
         node->name = name;
         node->func = func;
@@ -43,6 +44,26 @@ static BindNode* GetBindSet(BindNode* node) {
     return node;
 }
 
+static void CleanBindNode(BindNode* node) {
+    for (size_t i = 0; i < node->nodes.size; i++) {
+        CleanBindNode((BindNode*)node->nodes.data[i]);
+        EZ_FREE(node->nodes.data[i]);
+    }
+    ARRLIST_voidPtr_clear(&(node->nodes));
+}
+
+void AddConditionalBind(const char* name, BindCondition condition, BindFunc func, ...) {
+    va_list args;
+    va_start(args, func);
+    BindCommand curr;
+    BindNode* node = &g_root_bind;
+    do {
+        curr = va_arg(args, BindCommand);
+        AddBindPath(&node, name, func, condition, curr);
+    } while (!IsActionEndpoint(curr.action));
+    va_end(args);
+}
+
 void AddBind(const char* name, BindFunc func, ...) {
     va_list args;
     va_start(args, func);
@@ -50,7 +71,7 @@ void AddBind(const char* name, BindFunc func, ...) {
     BindNode* node = &g_root_bind;
     do {
         curr = va_arg(args, BindCommand);
-        AddBindPath(&node, name, func, curr);
+        AddBindPath(&node, name, func, NULL, curr);
     } while (!IsActionEndpoint(curr.action));
     va_end(args);
 }
@@ -62,22 +83,22 @@ void ListenBinds() {
         if (IsActionEndpoint(curr->command.action)) {
             switch(curr->command.action) {
                 case BIND_BUTTON_PRESSED:
-                    if (InputButtonPressed(curr->command.input)) curr->func();
+                    if (InputButtonPressed(curr->command.input) && (!curr->condition || curr->condition())) curr->func();
                     break;
                 case BIND_BUTTON_RELEASED:
-                    if (InputButtonReleased(curr->command.input)) curr->func();
+                    if (InputButtonReleased(curr->command.input) && (!curr->condition || curr->condition())) curr->func();
                     break;
                 case BIND_BUTTON_END:
-                    if (InputButtonDown(curr->command.input)) curr->func();
+                    if (InputButtonDown(curr->command.input) && (!curr->condition || curr->condition())) curr->func();
                     break;
                 case BIND_KEY_PRESSED:
-                    if (InputKeyPressed(curr->command.input)) curr->func();
+                    if (InputKeyPressed(curr->command.input) && (!curr->condition || curr->condition())) curr->func();
                     break;
                 case BIND_KEY_RELEASED:
-                    if (InputKeyReleased(curr->command.input)) curr->func();
+                    if (InputKeyReleased(curr->command.input) && (!curr->condition || curr->condition())) curr->func();
                     break;
                 case BIND_KEY_END:
-                    if (InputKeyDown(curr->command.input)) curr->func();
+                    if (InputKeyDown(curr->command.input) && (!curr->condition || curr->condition())) curr->func();
                     break;
                 default:
                     EZ_ASSERT(FALSE, "Unhandled bind action detected");
@@ -85,14 +106,6 @@ void ListenBinds() {
             }
         }
     }
-}
-
-static void CleanBindNode(BindNode* node) {
-    for (size_t i = 0; i < node->nodes.size; i++) {
-        CleanBindNode((BindNode*)node->nodes.data[i]);
-        EZ_FREE(node->nodes.data[i]);
-    }
-    ARRLIST_voidPtr_clear(&(node->nodes));
 }
 
 void CleanBinds() {
@@ -105,7 +118,7 @@ void DrawCurrentBinds(float x, float y) {
     BOOL listed = FALSE;
     for (size_t i = 0; i < bindset->nodes.size; i++) {
         BindNode* curr = (BindNode*)(bindset->nodes.data[i]);
-        if (IsActionEndpoint(curr->command.action)) {
+        if (IsActionEndpoint(curr->command.action) && (!curr->condition || curr->condition())) {
             const char* identifier = IsActionKey(curr->command.action) ? InputKeyRepresentation(curr->command.input) : InputButtonRepresentation(curr->command.input);
             UIDrawSubtleText("[%s] %s", identifier, curr->name);
             listed = TRUE;
@@ -114,7 +127,7 @@ void DrawCurrentBinds(float x, float y) {
     BOOL first = TRUE;
     for (size_t i = 0; i < bindset->nodes.size; i++) {
         BindNode* curr = (BindNode*)(bindset->nodes.data[i]);
-        if (!IsActionEndpoint(curr->command.action)) {
+        if (!IsActionEndpoint(curr->command.action) && (!curr->condition || curr->condition())) {
             if (first)  {
                 if (listed) UIMoveCursor(0, 20);
                 UIDrawSubtleText("Transition Keybinds:");

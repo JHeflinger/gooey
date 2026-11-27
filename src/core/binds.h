@@ -5,6 +5,7 @@
 #include <easybasics.h>
 
 typedef void (*BindFunc)(void);
+typedef BOOL (*BindCondition)(void);
 
 typedef enum {
     BIND_BUTTON_PRESSED,
@@ -27,7 +28,10 @@ typedef struct {
     const char* name;
     BindCommand command;
     ARRLIST_voidPtr nodes;
+    BindCondition condition;
 } BindNode;
+
+void AddConditionalBind(const char* name, BindCondition condition, BindFunc func, ...);
 
 void AddBind(const char* name, BindFunc func, ...);
 
